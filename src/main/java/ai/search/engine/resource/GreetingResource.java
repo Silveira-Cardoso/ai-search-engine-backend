@@ -1,4 +1,4 @@
-package org.acme;
+package ai.search.engine.resource;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;

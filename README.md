@@ -1,4 +1,9 @@
-# ai-search-engine-backend
+# AI Search Engine Backend
+
+## Technology
+
+* [Quarkus](https://quarkus.io/)
+* [Milvus](https://milvus.io/)
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
