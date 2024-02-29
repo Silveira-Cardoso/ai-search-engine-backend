@@ -4,6 +4,8 @@
 
 * [Quarkus](https://quarkus.io/)
 * [Milvus](https://milvus.io/)
+* [Attu](https://github.com/zilliztech/attu)
+  * It's the Milvus Client
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
