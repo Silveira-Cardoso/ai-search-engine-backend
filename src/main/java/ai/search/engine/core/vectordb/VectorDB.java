@@ -21,6 +21,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import static ai.search.engine.core.vectordb.DBUtils.embeddingToList;
+import static ai.search.engine.core.vectordb.DBUtils.newFieldType;
+
 public class VectorDB {
 
     public static void main(String[] args) {
@@ -62,7 +65,7 @@ public class VectorDB {
 			var fields = new ArrayList<InsertParam.Field>();
 			fields.add(new InsertParam.Field("id", List.of(1)));
 			fields.add(new InsertParam.Field("type", List.of("fashion")));
-			fields.add(new InsertParam.Field("embedding", List.of(toList(embedding))));
+			fields.add(new InsertParam.Field("embedding", List.of(embeddingToList(embedding))));
 
 			final var insertParam = InsertParam.newBuilder()
 					.withDatabaseName(databaseName)
@@ -89,7 +92,7 @@ public class VectorDB {
 			System.out.println("resultLoad: " + resultLoad);
 
 			var searchOutputFields = List.of("id", "type");
-			List<List<Float>> searchVectors = List.of(toList(embedding));
+			List<List<Float>> searchVectors = List.of(embeddingToList(embedding));
 
 			final Integer SEARCH_K = 5;                       // TopK
 			final String SEARCH_PARAM = "{\"nprobe\":10, \"offset\":0}";    // Params
@@ -152,14 +155,6 @@ public class VectorDB {
 		}
 	}
 
-	private static List<Float> toList(float[] array) {
-		var list = new ArrayList<Float>();
-        for (float v : array) {
-            list.add(v);
-        }
-		return list;
-	}
-
 	private static void createDatabaseIfNotExists(final MilvusServiceClient milvusClient,
 												  final String databaseName) {
 		boolean hasDatabase = milvusClient.listDatabases()
@@ -202,19 +197,5 @@ public class VectorDB {
 		if (!result.getData().getMsg().equals(RpcStatus.SUCCESS_MSG)) {
 			throw new IllegalStateException("Failed to create collection: " + result.getData().getMsg());
 		}
-	}
-
-	private static FieldType newFieldType(final String name,
-										  final DataType type) {
-		return newFieldType(name, type, Function.identity());
-	}
-
-	private static FieldType newFieldType(final String name,
-										  final DataType type,
-										  final Function<FieldType.Builder, FieldType.Builder> function) {
-		return function.apply(FieldType.newBuilder())
-				.withName(name)
-				.withDataType(type)
-				.build();
 	}
 }

@@ -21,9 +21,14 @@ import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.NoopTranslator;
 import ai.djl.translate.TranslateException;
 import ai.djl.util.Pair;
+import com.google.common.collect.Streams;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+
+import static java.util.Objects.*;
 
 /**
  * An example of inference using an CLIP model.
@@ -39,19 +44,26 @@ public class CLIPModel implements AutoCloseable {
     private final Predictor<String, float[]> textFeatureExtractor;
     private final Predictor<Pair<Image, String>, float[]> imgTextComparator;
 
-    public CLIPModel() throws ModelException, IOException {
-        var criteria = Criteria.builder()
-                        .setTypes(NDList.class, NDList.class)
-                        //.optModelUrls("https://resources.djl.ai/demo/pytorch/clip.zip")
-						.optModelPath(Paths.get("D:/Downloads/clip.zip"))
-                        .optTranslator(new NoopTranslator())
-                        .optEngine("PyTorch")
-                        .build();
-        clip = criteria.loadModel();
-        imageFeatureExtractor = clip.newPredictor(new ImageTranslator());
-        textFeatureExtractor = clip.newPredictor(new TextTranslator());
-        imgTextComparator = clip.newPredictor(new ImageTextTranslator());
-    }
+	public CLIPModel() throws ModelException, IOException {
+		this(Paths.get("D:/Downloads/clip.zip"));
+	}
+
+	public CLIPModel(Path modelPath) throws ModelException, IOException {
+		this(requireNonNull(modelPath).toUri().toURL().toString());
+	}
+
+	public CLIPModel(String uri) throws ModelException, IOException {
+		var criteria = Criteria.builder()
+				.setTypes(NDList.class, NDList.class)
+				.optModelUrls(uri)
+				.optTranslator(new NoopTranslator())
+				.optEngine("PyTorch")
+				.build();
+		clip = criteria.loadModel();
+		imageFeatureExtractor = clip.newPredictor(new ImageTranslator());
+		textFeatureExtractor = clip.newPredictor(new TextTranslator());
+		imgTextComparator = clip.newPredictor(new ImageTextTranslator());
+	}
 
     public float[] extractTextFeatures(String inputs) throws TranslateException {
         return textFeatureExtractor.predict(inputs);
@@ -61,9 +73,19 @@ public class CLIPModel implements AutoCloseable {
         return imageFeatureExtractor.predict(inputs);
     }
 
+	public List<float[]> batchExtractImageFeatures(List<Image> inputs) throws TranslateException {
+		return imageFeatureExtractor.batchPredict(inputs);
+	}
+
     public float[] compareTextAndImage(Image image, String text) throws TranslateException {
         return imgTextComparator.predict(new Pair<>(image, text));
     }
+
+	public List<float[]> batchCompareTextAndImage(List<Image> images, List<String> texts) throws TranslateException {
+		var batch = Streams.zip(images.stream(), texts.stream(), Pair::new)
+				.toList();
+		return imgTextComparator.batchPredict(batch);
+	}
 
     /** {@inheritDoc} */
     @Override
