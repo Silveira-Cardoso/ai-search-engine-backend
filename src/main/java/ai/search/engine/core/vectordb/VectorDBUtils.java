@@ -1,18 +1,15 @@
 package ai.search.engine.core.vectordb;
 
-import ai.djl.util.Pair;
 import io.milvus.grpc.DataType;
 import io.milvus.param.collection.FieldType;
-import io.milvus.param.dml.InsertParam;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 
-public class DBUtils {
+public class VectorDBUtils {
 
-	private DBUtils() {
+	private VectorDBUtils() {
 		throw new IllegalArgumentException("No DBUtils!");
 	}
 
