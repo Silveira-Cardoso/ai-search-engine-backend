@@ -6,6 +6,7 @@ import io.milvus.grpc.DataType;
 import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
 import jakarta.json.Json;
+import lombok.extern.jbosslog.JBossLog;
 
 import java.nio.file.Paths;
 import java.util.List;
@@ -14,12 +15,13 @@ import java.util.Map;
 import static ai.search.engine.core.vectordb.VectorDBUtils.embeddingToList;
 import static ai.search.engine.core.vectordb.VectorDBUtils.newFieldType;
 
+@JBossLog
 public class VectorDBMainTemp {
 
 	public static void main(String[] args) {
-		System.out.println("Starting vector search...");
+		LOG.info("Starting vector search...");
 		var databaseName = "aisearch";
-		VectorDB db = VectorDBFactory.getOrCreate("http://localhost:19530", "root:Milvus", databaseName)
+		VectorDB db = VectorDB.getOrCreate("http://localhost:19530", "root:Milvus", databaseName)
 				.await().indefinitely();
 		VectorDBCollection products = db.getOrCreate("products", List.of(
 				newFieldType("id", DataType.Int64,
@@ -36,6 +38,8 @@ public class VectorDBMainTemp {
 				.build();
 		products.createIndexIfNotExists("embedding", "idx_embedding", indexParam, IndexType.IVF_FLAT, MetricType.COSINE)
 				.await().indefinitely();
+		products.load()
+				.await().indefinitely();
 
 		var imageFactory = ImageFactory.getInstance();
 		var imgPathTest = "D:/workspace/vector-database-algorithm/data/cv/fashion/1000000151.jpg";
@@ -48,9 +52,10 @@ public class VectorDBMainTemp {
 					"type", List.of("fashion"),
 					"embedding", List.of(embeddingToList(embedding))
 			)).await().indefinitely();
-			System.out.println("insert count: " + count);
+			LOG.info("insert count: " + count);
 
-			products.flush().await().indefinitely();
+			products.flush()
+					.await().indefinitely();
 
 			var searchOutputFields = List.of("id", "type");
 			var extraParams = Json.createObjectBuilder()
@@ -59,11 +64,14 @@ public class VectorDBMainTemp {
 							.build();
 			var search = products.search(5, embedding, "embedding", searchOutputFields, extraParams)
 					.await().indefinitely();
-			System.out.println("search: " + search);
-			db.close().await().indefinitely();
+			// Because we passed just one embedding, we only get one result, but with a list of 5 top results.
+			LOG.info("search: " + search.getRowRecords(0));
+			// If we passed two embeddings we could use search.getRowRecords(0) and search.getRowRecords(1)
+			products.release()
+					.await().indefinitely();
+			db.close();
 		} catch (Throwable th) {
-			th.printStackTrace();
-			System.out.println("Throwable: " + th.getMessage());
+			LOG.error("Error: " + th.getMessage(), th);
 		}
 	}
 }

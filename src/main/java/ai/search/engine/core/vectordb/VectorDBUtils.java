@@ -1,9 +1,11 @@
 package ai.search.engine.core.vectordb;
 
+import com.google.common.primitives.Floats;
 import io.milvus.grpc.DataType;
+import io.milvus.param.RpcStatus;
 import io.milvus.param.collection.FieldType;
+import io.smallrye.mutiny.subscription.UniEmitter;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -28,10 +30,25 @@ public class VectorDBUtils {
 	}
 
 	public static List<Float> embeddingToList(float[] array) {
-		var list = new ArrayList<Float>();
-		for (float v : array) {
-			list.add(v);
+		return Floats.asList(array);
+	}
+
+	static boolean emitException(UniEmitter<?> emitter, Exception apiException) {
+		if (apiException != null) {
+			emitter.fail(apiException);
+			return true;
 		}
-		return list;
+
+		return false;
+	}
+
+	static boolean emitException(UniEmitter<?> emitter, Exception apiException,
+								 RpcStatus status, String statusFailedMsg) {
+		if (!status.getMsg().equals(RpcStatus.SUCCESS_MSG)) {
+			emitter.fail(new IllegalStateException(statusFailedMsg));
+			return true;
+		}
+
+		return emitException(emitter, apiException);
 	}
 }

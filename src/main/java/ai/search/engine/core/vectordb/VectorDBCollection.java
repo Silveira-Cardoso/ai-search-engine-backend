@@ -2,11 +2,9 @@ package ai.search.engine.core.vectordb;
 
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
-import io.milvus.grpc.SearchResults;
+import io.milvus.grpc.FlushResponse;
 import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
-import io.milvus.param.R;
-import io.milvus.param.RpcStatus;
 import io.milvus.param.collection.FlushParam;
 import io.milvus.param.collection.LoadCollectionParam;
 import io.milvus.param.collection.ReleaseCollectionParam;
@@ -17,7 +15,6 @@ import io.milvus.param.index.DescribeIndexParam;
 import io.milvus.response.SearchResultsWrapper;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.subscription.UniEmitter;
 import jakarta.json.JsonObject;
 
 import java.util.List;
@@ -25,14 +22,15 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static ai.search.engine.core.vectordb.VectorDBUtils.embeddingToList;
+import static ai.search.engine.core.vectordb.VectorDBUtils.emitException;
 
 public class VectorDBCollection {
 
 	private final String databaseName;
 	private final String collectionName;
 	private final MilvusServiceClient milvusClient;
-	private final ExecutorService executor;
+	private final ExecutorService blockingExecutor;
+	private final ExecutorService nonBlockingExecutor;
 
 	VectorDBCollection(String databaseName,
 					   String collectionName,
@@ -40,7 +38,12 @@ public class VectorDBCollection {
         this.databaseName = databaseName;
         this.collectionName = collectionName;
         this.milvusClient = milvusClient;
-		this.executor = Executors.newSingleThreadExecutor();
+		// Perhaps a shared executor between instance collections?
+		// Or a blockingExecutor for each instance and a nonBlockingExecutor shared between all?
+		// because the nonBlockingExecutor works just with non blocking code.
+		// Benchmark may be the answer
+		this.blockingExecutor = Executors.newSingleThreadExecutor();
+		this.nonBlockingExecutor = Executors.newSingleThreadExecutor();
     }
 
 	@RunOnVirtualThread
@@ -73,7 +76,7 @@ public class VectorDBCollection {
 
 					emitter.complete(true);
 				})
-				.emitOn(executor);
+				.emitOn(blockingExecutor);
 	}
 
 	@RunOnVirtualThread
@@ -81,28 +84,26 @@ public class VectorDBCollection {
 		return Uni.createFrom().emitter(emitter -> {
 			var insertParam = createInsertParam(collectionName, fieldAndValues);
 			var listenableFuture = milvusClient.insertAsync(insertParam);
-			EmitterToFutureCallBack.emitterToCallback(emitter, listenableFuture, executor,
+			EmitterToFutureCallBack.emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,
 					result -> result.getData().getInsertCnt());
 		});
 	}
 
-	public Uni<Integer> flush() {
-		return Uni.createFrom().<Integer>emitter(emitter -> {
+	@RunOnVirtualThread
+	public Uni<FlushResponse> flush() {
+		return Uni.createFrom().<FlushResponse>emitter(emitter -> {
 					var resultFlush = milvusClient.flush(FlushParam.newBuilder()
 							.withDatabaseName(databaseName)
 							.withCollectionNames(List.of(collectionName))
 							.build());
 					if (emitException(emitter, resultFlush.getException())) return;
-					emitter.complete(resultFlush.getData().getCollFlushTsCount());
+					emitter.complete(resultFlush.getData());
 				})
-				.emitOn(executor);
+				.emitOn(blockingExecutor);
 	}
 
-	public Uni<SearchResultsWrapper> search(int searchK,
-							  float[] embedding,
-							  String embeddingFieldName,
-							  List<String> outFields,
-							  JsonObject extraSearchParam) {
+	@RunOnVirtualThread
+	public Uni<Void> load() {
 		return Uni.createFrom().emitter(emitter -> {
 			var resultLoad = milvusClient.loadCollection(
 					LoadCollectionParam.newBuilder()
@@ -113,55 +114,74 @@ public class VectorDBCollection {
 
 			if (emitException(emitter, resultLoad.getException(),
 					resultLoad.getData(), "Failed to load index")) return;
+			emitter.complete(null);
+		})
+		.emitOn(blockingExecutor)
+		.replaceWithVoid();
+	}
 
-			boolean failedRelease;
-			R<SearchResults> respSearch;
-			try {
-				var searchVectors = List.of(embeddingToList(embedding));
-				var searchParam = SearchParam.newBuilder()
-						.withCollectionName(collectionName)
-						.withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)
-						.withMetricType(MetricType.COSINE)
-						.withOutFields(outFields)
-						.withTopK(searchK)
-						.withVectors(searchVectors)
-						.withVectorFieldName(embeddingFieldName)
-						.withParams(extraSearchParam.toString())
-						.build();
+	@RunOnVirtualThread
+	public Uni<Void> release() {
+		return Uni.createFrom().emitter(emitter -> {
+			var resultRelease = milvusClient.releaseCollection(
+					ReleaseCollectionParam.newBuilder()
+							.withCollectionName(collectionName)
+							.build());
 
-				respSearch = milvusClient.search(searchParam);
-			} finally {
-				var resultRelease = milvusClient.releaseCollection(
-						ReleaseCollectionParam.newBuilder()
-								.withCollectionName(collectionName)
-								.build());
+			if(emitException(emitter, resultRelease.getException(),
+					resultRelease.getData(), "Failed to release collection")) return;
+			emitter.complete(null);
+		})
+		.emitOn(blockingExecutor)
+		.replaceWithVoid();
+	}
 
-				failedRelease = emitException(emitter, resultRelease.getException(),
-						resultRelease.getData(), "Failed to release collection");
-            }
+	public Uni<SearchResultsWrapper> search(int searchK,
+											float[] embedding,
+											String embeddingFieldName,
+											List<String> outFields,
+											JsonObject extraSearchParam) {
+		return search(searchK, List.of(embedding), embeddingFieldName, outFields, extraSearchParam);
+	}
 
-			if (failedRelease) return;
-			emitter.complete(new SearchResultsWrapper(respSearch.getData().getResults()));
+	@RunOnVirtualThread
+	public Uni<SearchResultsWrapper> search(int searchK,
+											List<float[]> embeddings,
+											String embeddingFieldName,
+											List<String> outFields,
+											JsonObject extraSearchParam) {
+		return Uni.createFrom().emitter(emitter -> {
+			var searchVectors = embeddings.stream()
+					.map(VectorDBUtils::embeddingToList)
+					.toList();
+			var searchParam = SearchParam.newBuilder()
+					.withCollectionName(collectionName)
+					.withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)
+					.withMetricType(MetricType.COSINE)
+					.withOutFields(outFields)
+					.withTopK(searchK)
+					.withVectors(searchVectors)
+					.withVectorFieldName(embeddingFieldName)
+					.withParams(extraSearchParam.toString())
+					.build();
+
+			var listenableFuture = milvusClient.searchAsync(searchParam);
+			EmitterToFutureCallBack.emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,
+					result -> new SearchResultsWrapper(result.getData().getResults()));
 		});
 	}
 
-	private static boolean emitException(UniEmitter<?> emitter, Exception apiException) {
-		if (apiException != null) {
-			emitter.fail(apiException);
-			return true;
-		}
-
-		return false;
-	}
-
-	private static boolean emitException(UniEmitter<?> emitter, Exception apiException,
-										 RpcStatus status, String statusFailedMsg) {
-		if (!status.getMsg().equals(RpcStatus.SUCCESS_MSG)) {
-			emitter.fail(new IllegalStateException(statusFailedMsg));
-			return true;
-		}
-
-		return emitException(emitter, apiException);
+	/**
+	 * This method is used by the VectorDB to
+	 * create a hook so when the VectorDB is closed,
+	 * it shuts down the executors.
+	 * It's package private so that the user
+	 * don't manage by itself the executors,
+	 * breaking the encapsulation.
+	 */
+	void close() {
+		if (!blockingExecutor.isShutdown()) blockingExecutor.shutdown();
+		if (!nonBlockingExecutor.isShutdown()) nonBlockingExecutor.shutdown();
 	}
 
 	private InsertParam createInsertParam(String collectionName,
