@@ -42,7 +42,7 @@ public class VectorDB {
     }
 
 	@RunOnVirtualThread
-	public Uni<VectorDBCollection> getOrCreate(final String collectionName, List<FieldType> fieldTypes) {
+	public Uni<VectorDBCollection> getOrCreate(String collectionName, List<FieldType> fieldTypes) {
 		return Uni.createFrom().<VectorDBCollection>emitter(emitter -> {
 			var hasCollection = milvusClient.hasCollection(HasCollectionParam.newBuilder()
 					.withDatabaseName(databaseName)
