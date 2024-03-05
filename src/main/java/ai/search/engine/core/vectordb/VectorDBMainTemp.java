@@ -21,9 +21,9 @@ public class VectorDBMainTemp {
 	public static void main(String[] args) {
 		LOG.info("Starting vector search...");
 		var databaseName = "aisearch";
-		VectorDB db = VectorDB.getOrCreate("http://localhost:19530", "root:Milvus", databaseName)
+		VectorDB database = VectorDB.getOrCreateDatabase("http://localhost:19530", "root:Milvus", databaseName)
 				.await().indefinitely();
-		VectorDBCollection products = db.getOrCreate("products", List.of(
+		VectorDBCollection products = database.getOrCreateCollection("products", List.of(
 				newFieldType("id", DataType.Int64,
 						builder -> builder.withAutoID(true)
 								.withPrimaryKey(true)),
@@ -36,7 +36,8 @@ public class VectorDBMainTemp {
 		var indexParam = Json.createObjectBuilder()
 				.add("nlist", 1024)
 				.build();
-		products.createIndexIfNotExists("embedding", "idx_embedding", indexParam, IndexType.IVF_FLAT, MetricType.COSINE)
+		products.createIndexIfNotExists("embedding", "idx_embedding",
+						indexParam, IndexType.IVF_FLAT, MetricType.COSINE)
 				.await().indefinitely();
 		products.load()
 				.await().indefinitely();
@@ -69,7 +70,7 @@ public class VectorDBMainTemp {
 			// If we passed two embeddings we could use search.getRowRecords(0) and search.getRowRecords(1)
 			products.release()
 					.await().indefinitely();
-			db.close();
+			database.close();
 		} catch (Throwable th) {
 			LOG.error("Error: " + th.getMessage(), th);
 		}

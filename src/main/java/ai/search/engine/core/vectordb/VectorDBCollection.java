@@ -17,13 +17,15 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Uni;
 import jakarta.json.JsonObject;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
+import static ai.search.engine.core.vectordb.EmitterToFutureCallBack.emitterToCallback;
 import static ai.search.engine.core.vectordb.VectorDBUtils.emitException;
 
+@ThreadSafe
 public class VectorDBCollection {
 
 	private final String databaseName;
@@ -34,16 +36,14 @@ public class VectorDBCollection {
 
 	VectorDBCollection(String databaseName,
 					   String collectionName,
-					   MilvusServiceClient milvusClient) {
+					   MilvusServiceClient milvusClient,
+					   ExecutorService blockingExecutor,
+					   ExecutorService nonBlockingExecutor) {
         this.databaseName = databaseName;
         this.collectionName = collectionName;
         this.milvusClient = milvusClient;
-		// Perhaps a shared executor between instance collections?
-		// Or a blockingExecutor for each instance and a nonBlockingExecutor shared between all?
-		// because the nonBlockingExecutor works just with non blocking code.
-		// Benchmark may be the answer
-		this.blockingExecutor = Executors.newSingleThreadExecutor();
-		this.nonBlockingExecutor = Executors.newSingleThreadExecutor();
+		this.blockingExecutor = blockingExecutor;
+		this.nonBlockingExecutor = nonBlockingExecutor;
     }
 
 	@RunOnVirtualThread
@@ -84,7 +84,7 @@ public class VectorDBCollection {
 		return Uni.createFrom().emitter(emitter -> {
 			var insertParam = createInsertParam(collectionName, fieldAndValues);
 			var listenableFuture = milvusClient.insertAsync(insertParam);
-			EmitterToFutureCallBack.emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,
+			emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,
 					result -> result.getData().getInsertCnt());
 		});
 	}
@@ -166,22 +166,9 @@ public class VectorDBCollection {
 					.build();
 
 			var listenableFuture = milvusClient.searchAsync(searchParam);
-			EmitterToFutureCallBack.emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,
+			emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,
 					result -> new SearchResultsWrapper(result.getData().getResults()));
 		});
-	}
-
-	/**
-	 * This method is used by the VectorDB to
-	 * create a hook so when the VectorDB is closed,
-	 * it shuts down the executors.
-	 * It's package private so that the user
-	 * don't manage by itself the executors,
-	 * breaking the encapsulation.
-	 */
-	void close() {
-		if (!blockingExecutor.isShutdown()) blockingExecutor.shutdown();
-		if (!nonBlockingExecutor.isShutdown()) nonBlockingExecutor.shutdown();
 	}
 
 	private InsertParam createInsertParam(String collectionName,
