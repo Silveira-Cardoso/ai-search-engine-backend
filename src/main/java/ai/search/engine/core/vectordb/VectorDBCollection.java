@@ -9,9 +9,11 @@ import io.milvus.param.collection.FlushParam;
 import io.milvus.param.collection.LoadCollectionParam;
 import io.milvus.param.collection.ReleaseCollectionParam;
 import io.milvus.param.dml.InsertParam;
+import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
 import io.milvus.param.index.CreateIndexParam;
 import io.milvus.param.index.DescribeIndexParam;
+import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.SearchResultsWrapper;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Uni;
@@ -82,7 +84,7 @@ public class VectorDBCollection {
 	@RunOnVirtualThread
 	public Uni<Long> insert(final Map<String, List<?>> fieldAndValues) {
 		return Uni.createFrom().emitter(emitter -> {
-			var insertParam = createInsertParam(collectionName, fieldAndValues);
+			var insertParam = insertParam(collectionName, fieldAndValues);
 			var listenableFuture = milvusClient.insertAsync(insertParam);
 			emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,
 					result -> result.getData().getInsertCnt());
@@ -136,6 +138,11 @@ public class VectorDBCollection {
 		.replaceWithVoid();
 	}
 
+	/**
+	 * Search with Milvus API with embedding vector as input data field.
+     * Reference:
+     * 	<a href="https://milvus.io/docs/search.md">www.milvus.io</a>
+     */
 	public Uni<SearchResultsWrapper> search(int searchK,
 											float[] embedding,
 											String embeddingFieldName,
@@ -144,6 +151,11 @@ public class VectorDBCollection {
 		return search(searchK, List.of(embedding), embeddingFieldName, outFields, extraSearchParam);
 	}
 
+	/**
+	 * Search with Milvus API with embedding vector as input data field.
+	 * Reference:
+	 * 	<a href="https://milvus.io/docs/search.md">www.milvus.io</a>
+	 */
 	@RunOnVirtualThread
 	public Uni<SearchResultsWrapper> search(int searchK,
 											List<float[]> embeddings,
@@ -171,8 +183,50 @@ public class VectorDBCollection {
 		});
 	}
 
-	private InsertParam createInsertParam(String collectionName,
-										  Map<String, List<?>> fieldAndValues) {
+	/**
+	 * Query with Milvus API.
+	 * expr: "book_id in [2,4,6,8]"
+	 * outFields: List.of("book_id", "title", "author") or List.of("count(*)")
+	 * Reference:
+	 * 	<a href="https://milvus.io/docs/query.md">www.milvus.io</a>
+	 */
+	@RunOnVirtualThread
+	public Uni<QueryResultsWrapper> query(String expr,
+										  List<String> outFields,
+										  long offset,
+										  long limit) {
+		return Uni.createFrom().emitter(emitter -> {
+			var queryParam = queryBuilder(expr, outFields)
+					.withOffset(offset)
+					.withLimit(limit)
+					.build();
+			var listenableFuture = milvusClient.queryAsync(queryParam);
+			emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,
+					result -> new QueryResultsWrapper(result.getData()));
+		});
+	}
+
+	@RunOnVirtualThread
+	public Uni<QueryResultsWrapper> query(String expr,
+										  List<String> outFields) {
+		return Uni.createFrom().emitter(emitter -> {
+			var queryParam = queryBuilder(expr, outFields).build();
+			var listenableFuture = milvusClient.queryAsync(queryParam);
+			emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,
+					result -> new QueryResultsWrapper(result.getData()));
+		});
+	}
+
+	private QueryParam.Builder queryBuilder(String expr, List<String> outFields) {
+		return QueryParam.newBuilder()
+				.withCollectionName(collectionName)
+				.withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)
+				.withExpr(expr)
+				.withOutFields(outFields);
+	}
+
+	private InsertParam insertParam(String collectionName,
+									Map<String, List<?>> fieldAndValues) {
 		var fields = fieldAndValues.entrySet()
 				.stream()
 				.map(entry -> new InsertParam.Field(entry.getKey(), entry.getValue()))
