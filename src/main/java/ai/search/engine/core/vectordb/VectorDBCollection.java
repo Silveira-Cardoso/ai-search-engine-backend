@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import static ai.search.engine.core.vectordb.EmitterToFutureCallBack.emitterToCallback;
+import static ai.search.engine.core.vectordb.VectorDBUtils.createEmitter;
 import static ai.search.engine.core.vectordb.VectorDBUtils.emitException;
 
 @ThreadSafe
@@ -54,7 +55,7 @@ public class VectorDBCollection {
 											   JsonObject indexParam,
 											   IndexType indexType,
 											   MetricType metricType) {
-		return Uni.createFrom().<Boolean>emitter(emitter -> {
+		return VectorDBUtils.<Boolean>createEmitter(emitter -> {
 					var resultDesc = milvusClient.describeIndex(DescribeIndexParam.newBuilder()
 							.withDatabaseName(databaseName)
 							.withCollectionName(collectionName)
@@ -83,7 +84,7 @@ public class VectorDBCollection {
 
 	@RunOnVirtualThread
 	public Uni<Long> insert(final Map<String, List<?>> fieldAndValues) {
-		return Uni.createFrom().emitter(emitter -> {
+		return createEmitter(emitter -> {
 			var insertParam = insertParam(collectionName, fieldAndValues);
 			var listenableFuture = milvusClient.insertAsync(insertParam);
 			emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,
@@ -93,7 +94,7 @@ public class VectorDBCollection {
 
 	@RunOnVirtualThread
 	public Uni<FlushResponse> flush() {
-		return Uni.createFrom().<FlushResponse>emitter(emitter -> {
+		return VectorDBUtils.<FlushResponse>createEmitter(emitter -> {
 					var resultFlush = milvusClient.flush(FlushParam.newBuilder()
 							.withDatabaseName(databaseName)
 							.withCollectionNames(List.of(collectionName))
@@ -106,7 +107,7 @@ public class VectorDBCollection {
 
 	@RunOnVirtualThread
 	public Uni<Void> load() {
-		return Uni.createFrom().emitter(emitter -> {
+		return createEmitter(emitter -> {
 			var resultLoad = milvusClient.loadCollection(
 					LoadCollectionParam.newBuilder()
 							.withDatabaseName(databaseName)
@@ -124,13 +125,13 @@ public class VectorDBCollection {
 
 	@RunOnVirtualThread
 	public Uni<Void> release() {
-		return Uni.createFrom().emitter(emitter -> {
+		return createEmitter(emitter -> {
 			var resultRelease = milvusClient.releaseCollection(
 					ReleaseCollectionParam.newBuilder()
 							.withCollectionName(collectionName)
 							.build());
 
-			if(emitException(emitter, resultRelease.getException(),
+			if (emitException(emitter, resultRelease.getException(),
 					resultRelease.getData(), "Failed to release collection")) return;
 			emitter.complete(null);
 		})
@@ -140,6 +141,15 @@ public class VectorDBCollection {
 
 	/**
 	 * Search with Milvus API with embedding vector as input data field.
+	 * Example:
+	 * 	var searchOutputFields = List.of("id", "type");
+	 * 	var extraParams = Json.createObjectBuilder()
+	 * 			.add("nprobe", 10)
+	 * 			.add("offset", 0)
+	 * 			.build();
+	 * 	var search = products.search(5, embedding, "embedding", searchOutputFields, extraParams)
+	 * 			.await().indefinitely();
+	 * LOG.info("search: " + search.getRowRecords(0));
      * Reference:
      * 	<a href="https://milvus.io/docs/search.md">www.milvus.io</a>
      */
@@ -162,7 +172,7 @@ public class VectorDBCollection {
 											String embeddingFieldName,
 											List<String> outFields,
 											JsonObject extraSearchParam) {
-		return Uni.createFrom().emitter(emitter -> {
+		return createEmitter(emitter -> {
 			var searchVectors = embeddings.stream()
 					.map(VectorDBUtils::embeddingToList)
 					.toList();
@@ -195,7 +205,7 @@ public class VectorDBCollection {
 										  List<String> outFields,
 										  long offset,
 										  long limit) {
-		return Uni.createFrom().emitter(emitter -> {
+		return createEmitter(emitter -> {
 			var queryParam = queryBuilder(expr, outFields)
 					.withOffset(offset)
 					.withLimit(limit)
@@ -209,7 +219,7 @@ public class VectorDBCollection {
 	@RunOnVirtualThread
 	public Uni<QueryResultsWrapper> query(String expr,
 										  List<String> outFields) {
-		return Uni.createFrom().emitter(emitter -> {
+		return createEmitter(emitter -> {
 			var queryParam = queryBuilder(expr, outFields).build();
 			var listenableFuture = milvusClient.queryAsync(queryParam);
 			emitterToCallback(emitter, listenableFuture, nonBlockingExecutor,

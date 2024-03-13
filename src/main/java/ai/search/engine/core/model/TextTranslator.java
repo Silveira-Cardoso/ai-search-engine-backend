@@ -28,7 +28,10 @@ public class TextTranslator implements NoBatchifyTranslator<String, float[]> {
         final var attention = ctx.getNDManager().create(encoding.getAttentionMask());
         final var inputIds = ctx.getNDManager().create(encoding.getIds());
         final var placeholder = ctx.getNDManager().create("");
+		// Placeholder to call method get_text_features:
+		// https://huggingface.co/docs/transformers/model_doc/clip#transformers.TFCLIPModel.get_text_features
         placeholder.setName("module_method:get_text_features");
+		// (input_ids, attention_mask)
         return new NDList(inputIds.expandDims(0), attention.expandDims(0), placeholder);
     }
 }

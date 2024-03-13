@@ -19,16 +19,15 @@ import ai.djl.ndarray.NDList;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.NoopTranslator;
-import ai.djl.translate.TranslateException;
 import ai.djl.util.Pair;
 import com.google.common.collect.Streams;
+import lombok.SneakyThrows;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 
-import static java.util.Objects.*;
+import static java.util.Objects.requireNonNull;
 
 /**
  * An example of inference using an CLIP model.
@@ -45,7 +44,7 @@ public class CLIPModel implements AutoCloseable {
     private final Predictor<Pair<Image, String>, float[]> imgTextComparator;
 
 	public CLIPModel() throws ModelException, IOException {
-		this(Paths.get("D:/Downloads/clip.zip"));
+		this("https://resources.djl.ai/demo/pytorch/clip.zip");
 	}
 
 	public CLIPModel(Path modelPath) throws ModelException, IOException {
@@ -65,23 +64,28 @@ public class CLIPModel implements AutoCloseable {
 		imgTextComparator = clip.newPredictor(new ImageTextTranslator());
 	}
 
-    public float[] extractTextFeatures(String inputs) throws TranslateException {
-        return textFeatureExtractor.predict(inputs);
+	@SneakyThrows
+    public float[] extractTextFeatures(String input) {
+        return textFeatureExtractor.predict(input);
     }
 
-    public float[] extractImageFeatures(Image inputs) throws TranslateException {
-        return imageFeatureExtractor.predict(inputs);
+	@SneakyThrows
+    public float[] extractImageFeatures(Image input) {
+        return imageFeatureExtractor.predict(input);
     }
 
-	public List<float[]> batchExtractImageFeatures(List<Image> inputs) throws TranslateException {
+	@SneakyThrows
+	public List<float[]> batchExtractImageFeatures(List<Image> inputs) {
 		return imageFeatureExtractor.batchPredict(inputs);
 	}
 
-    public float[] compareTextAndImage(Image image, String text) throws TranslateException {
+	@SneakyThrows
+    public float[] compareTextAndImage(Image image, String text) {
         return imgTextComparator.predict(new Pair<>(image, text));
     }
 
-	public List<float[]> batchCompareTextAndImage(List<Image> images, List<String> texts) throws TranslateException {
+	@SneakyThrows
+	public List<float[]> batchCompareTextAndImage(List<Image> images, List<String> texts) {
 		var batch = Streams.zip(images.stream(), texts.stream(), Pair::new)
 				.toList();
 		return imgTextComparator.batchPredict(batch);

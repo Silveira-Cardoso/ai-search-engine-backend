@@ -19,6 +19,7 @@
   	<milvus.version>2.3.4</milvus.version>
   	<lombok.version>1.18.30</lombok.version>
     <slf4j.version>2.0.10</slf4j.version>
+  	<quarkus.version>3.7.4</quarkus.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -35,15 +36,23 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-resteasy-reactive</artifactId>
+	  <version>${quarkus.version}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-rest-client-reactive-jackson</artifactId>
+	  <version>${quarkus.version}</version>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-arc</artifactId>
+      <version>${quarkus.version}</version>
     </dependency>
+	<dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-scheduler</artifactId>
+	  <version>${quarkus.version}</version>
+	</dependency>
     <dependency>
       <groupId>io.milvus</groupId>
       <artifactId>milvus-sdk-java</artifactId>

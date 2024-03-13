@@ -47,8 +47,13 @@ public class VectorDB {
     }
 
 	@RunOnVirtualThread
+	public Uni<VectorDBCollection> getOrCreateCollection(String collectionName) {
+		return getOrCreateCollection(collectionName, List.of());
+	}
+
+	@RunOnVirtualThread
 	public Uni<VectorDBCollection> getOrCreateCollection(String collectionName, List<FieldType> fieldTypes) {
-		return Uni.createFrom().<VectorDBCollection>emitter(emitter -> {
+		return VectorDBUtils.<VectorDBCollection>createEmitter(emitter -> {
 			var hasCollection = milvusClient.hasCollection(HasCollectionParam.newBuilder()
 					.withDatabaseName(databaseName)
 					.withCollectionName(collectionName)
@@ -91,16 +96,16 @@ public class VectorDB {
 	@RunOnVirtualThread
 	public static Uni<VectorDB> getOrCreateDatabase(String uri,
 													String token,
-													String databaseName) {
-		var blocking = Executors.newFixedThreadPool(Math.max(Runtime.getRuntime().availableProcessors(), MIN_NUM_THREADS));
-		var nonBlocking = Executors.newSingleThreadExecutor();
-		var vectorDb = new VectorDB(uri, token, databaseName, blocking, nonBlocking);
+													String databaseName,
+													ExecutorService blockingExecutor,
+													ExecutorService nonBlockingExecutor) {
+		var vectorDb = new VectorDB(uri, token, databaseName, blockingExecutor, nonBlockingExecutor);
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			blocking.shutdown();
-			nonBlocking.shutdown();
+			blockingExecutor.shutdown();
+			nonBlockingExecutor.shutdown();
 		}));
 
-		return Uni.createFrom().<VectorDB>emitter(emitter -> {
+		return VectorDBUtils.<VectorDB>createEmitter(emitter -> {
 					boolean hasDatabase = vectorDb.milvusClient.listDatabases()
 							.getData()
 							.getDbNamesList()
@@ -116,6 +121,15 @@ public class VectorDB {
 
 					emitter.complete(vectorDb);
 				})
-				.emitOn(blocking);
+				.emitOn(blockingExecutor);
+	}
+
+	@RunOnVirtualThread
+	public static Uni<VectorDB> getOrCreateDatabase(String uri,
+													String token,
+													String databaseName) {
+		var blocking = Executors.newFixedThreadPool(Math.max(Runtime.getRuntime().availableProcessors(), MIN_NUM_THREADS));
+		var nonBlocking = Executors.newVirtualThreadPerTaskExecutor();
+		return getOrCreateDatabase(uri, token, databaseName, blocking, nonBlocking);
 	}
 }

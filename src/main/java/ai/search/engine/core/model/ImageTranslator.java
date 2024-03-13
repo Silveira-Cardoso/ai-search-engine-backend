@@ -14,7 +14,6 @@ package ai.search.engine.core.model;
 
 import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.util.NDImageUtils;
-import ai.djl.ndarray.NDArray;
 import ai.djl.ndarray.NDList;
 import ai.djl.translate.NoBatchifyTranslator;
 import ai.djl.translate.TranslatorContext;
@@ -24,25 +23,28 @@ public class ImageTranslator implements NoBatchifyTranslator<Image, float[]> {
     /** {@inheritDoc} */
     @Override
     public float[] processOutput(TranslatorContext ctx, NDList list) {
-        NDArray array = list.singletonOrThrow();
+        var array = list.singletonOrThrow();
         return array.toFloatArray();
     }
 
     /** {@inheritDoc} */
     @Override
     public NDList processInput(TranslatorContext ctx, Image input) {
-        NDArray array = input.toNDArray(ctx.getNDManager(), Image.Flag.COLOR);
+        var array = input.toNDArray(ctx.getNDManager(), Image.Flag.COLOR);
 
+		// Resize image to 224x224 (the model has this input size)
         float percent = 224f / Math.min(input.getWidth(), input.getHeight());
         int resizedWidth = Math.round(input.getWidth() * percent);
         int resizedHeight = Math.round(input.getHeight() * percent);
 
-        array =
-                NDImageUtils.resize(
-                        array, resizedWidth, resizedHeight, Image.Interpolation.BICUBIC);
+        array = NDImageUtils.resize(array, resizedWidth, resizedHeight,
+				Image.Interpolation.BICUBIC);
         array = NDImageUtils.centerCrop(array, 224, 224);
+		// Change from Height, Width, Channels to Channels, Height, Width
         array = NDImageUtils.toTensor(array);
-        NDArray placeholder = ctx.getNDManager().create("");
+        var placeholder = ctx.getNDManager().create("");
+		// Placeholder to call method get_image_features:
+		// https://huggingface.co/docs/transformers/model_doc/clip#transformers.TFCLIPModel.get_image_features
         placeholder.setName("module_method:get_image_features");
         return new NDList(array.expandDims(0), placeholder);
     }

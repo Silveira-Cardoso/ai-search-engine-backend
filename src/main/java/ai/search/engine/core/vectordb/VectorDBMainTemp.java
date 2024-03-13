@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 import static ai.search.engine.core.vectordb.VectorDBUtils.embeddingToList;
-import static ai.search.engine.core.vectordb.VectorDBUtils.newFieldType;
 
 @JBossLog
 public class VectorDBMainTemp {
@@ -24,12 +23,12 @@ public class VectorDBMainTemp {
 		VectorDB database = VectorDB.getOrCreateDatabase("http://localhost:19530", "root:Milvus", databaseName)
 				.await().indefinitely();
 		VectorDBCollection products = database.getOrCreateCollection("products", List.of(
-				newFieldType("id", DataType.Int64,
+				VectorDBUtils.fieldType("id", DataType.Int64,
 						builder -> builder.withAutoID(true)
 								.withPrimaryKey(true)),
-				newFieldType("type", DataType.VarChar,
+				VectorDBUtils.fieldType("type", DataType.VarChar,
 						builder -> builder.withMaxLength(255)),
-				newFieldType("embedding", DataType.FloatVector,
+				VectorDBUtils.fieldType("embedding", DataType.FloatVector,
 						builder -> builder.withDimension(512))))
 				.await().indefinitely();
 
