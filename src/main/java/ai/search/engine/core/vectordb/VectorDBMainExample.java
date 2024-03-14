@@ -15,7 +15,7 @@ import java.util.Map;
 import static ai.search.engine.core.vectordb.VectorDBUtils.embeddingToList;
 
 @JBossLog
-public class VectorDBMainTemp {
+public class VectorDBMainExample {
 
 	public static void main(String[] args) {
 		LOG.info("Starting vector search...");
@@ -42,7 +42,7 @@ public class VectorDBMainTemp {
 				.await().indefinitely();
 
 		var imageFactory = ImageFactory.getInstance();
-		var imgPathTest = "D:/workspace/vector-database-algorithm/data/cv/fashion/1000000151.jpg";
+		var imgPathTest = "/data/cv/fashion/1000000151.jpg";
 		try (var model = new CLIPModel()) {
 
 			var image = imageFactory.fromFile(Paths.get(imgPathTest));

@@ -6,7 +6,6 @@ import io.milvus.param.collection.CreateCollectionParam;
 import io.milvus.param.collection.CreateDatabaseParam;
 import io.milvus.param.collection.FieldType;
 import io.milvus.param.collection.HasCollectionParam;
-import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Uni;
 import lombok.extern.jbosslog.JBossLog;
 
@@ -29,11 +28,11 @@ public class VectorDB {
 	private final ExecutorService blockingExecutor;
 	private final ExecutorService nonBlockingExecutor;
 
-	VectorDB(final String uri,
-			 final String token,
-			 final String databaseName,
-			 final ExecutorService blockingExecutor,
-			 final ExecutorService nonBlockingExecutor) {
+	VectorDB(String uri,
+			 String token,
+			 String databaseName,
+			 ExecutorService blockingExecutor,
+			 ExecutorService nonBlockingExecutor) {
 		this.databaseName = requireNonNull(databaseName);
         this.milvusClient = new MilvusServiceClient(
 				ConnectParam.newBuilder()
@@ -46,12 +45,10 @@ public class VectorDB {
 		this.nonBlockingExecutor = requireNonNull(nonBlockingExecutor);
     }
 
-	@RunOnVirtualThread
 	public Uni<VectorDBCollection> getOrCreateCollection(String collectionName) {
 		return getOrCreateCollection(collectionName, List.of());
 	}
 
-	@RunOnVirtualThread
 	public Uni<VectorDBCollection> getOrCreateCollection(String collectionName, List<FieldType> fieldTypes) {
 		return VectorDBUtils.<VectorDBCollection>createEmitter(emitter -> {
 			var hasCollection = milvusClient.hasCollection(HasCollectionParam.newBuilder()
@@ -93,7 +90,6 @@ public class VectorDB {
 		}
 	}
 
-	@RunOnVirtualThread
 	public static Uni<VectorDB> getOrCreateDatabase(String uri,
 													String token,
 													String databaseName,
@@ -124,7 +120,6 @@ public class VectorDB {
 				.emitOn(blockingExecutor);
 	}
 
-	@RunOnVirtualThread
 	public static Uni<VectorDB> getOrCreateDatabase(String uri,
 													String token,
 													String databaseName) {

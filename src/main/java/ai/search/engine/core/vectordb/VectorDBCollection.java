@@ -49,7 +49,6 @@ public class VectorDBCollection {
 		this.nonBlockingExecutor = nonBlockingExecutor;
     }
 
-	@RunOnVirtualThread
 	public Uni<Boolean> createIndexIfNotExists(String fieldName,
 											   String indexName,
 											   JsonObject indexParam,
@@ -82,7 +81,6 @@ public class VectorDBCollection {
 				.emitOn(blockingExecutor);
 	}
 
-	@RunOnVirtualThread
 	public Uni<Long> insert(final Map<String, List<?>> fieldAndValues) {
 		return createEmitter(emitter -> {
 			var insertParam = insertParam(collectionName, fieldAndValues);
@@ -92,7 +90,6 @@ public class VectorDBCollection {
 		});
 	}
 
-	@RunOnVirtualThread
 	public Uni<FlushResponse> flush() {
 		return VectorDBUtils.<FlushResponse>createEmitter(emitter -> {
 					var resultFlush = milvusClient.flush(FlushParam.newBuilder()
@@ -105,7 +102,6 @@ public class VectorDBCollection {
 				.emitOn(blockingExecutor);
 	}
 
-	@RunOnVirtualThread
 	public Uni<Void> load() {
 		return createEmitter(emitter -> {
 			var resultLoad = milvusClient.loadCollection(
@@ -123,7 +119,6 @@ public class VectorDBCollection {
 		.replaceWithVoid();
 	}
 
-	@RunOnVirtualThread
 	public Uni<Void> release() {
 		return createEmitter(emitter -> {
 			var resultRelease = milvusClient.releaseCollection(
@@ -166,7 +161,6 @@ public class VectorDBCollection {
 	 * Reference:
 	 * 	<a href="https://milvus.io/docs/search.md">www.milvus.io</a>
 	 */
-	@RunOnVirtualThread
 	public Uni<SearchResultsWrapper> search(int searchK,
 											List<float[]> embeddings,
 											String embeddingFieldName,
@@ -200,7 +194,6 @@ public class VectorDBCollection {
 	 * Reference:
 	 * 	<a href="https://milvus.io/docs/query.md">www.milvus.io</a>
 	 */
-	@RunOnVirtualThread
 	public Uni<QueryResultsWrapper> query(String expr,
 										  List<String> outFields,
 										  long offset,
@@ -216,7 +209,6 @@ public class VectorDBCollection {
 		});
 	}
 
-	@RunOnVirtualThread
 	public Uni<QueryResultsWrapper> query(String expr,
 										  List<String> outFields) {
 		return createEmitter(emitter -> {
