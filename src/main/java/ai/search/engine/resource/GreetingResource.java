@@ -1,16 +1,25 @@
 package ai.search.engine.resource;
 
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import ai.search.engine.core.model.FileExtensionEnum;
+import ai.search.engine.resource.dto.ImageResponse;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
 
-@Path("/hello")
+import java.util.List;
+
+@Path("/search")
 public class GreetingResource {
 
-    @GET
-    @Produces(MediaType.TEXT_PLAIN)
-    public String hello() {
-        return "Hello from RESTEasy Reactive";
+    @POST
+	@Path("/by-image")
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<ImageResponse> searchByImage(@RestForm FileUpload image) {
+		if (!FileExtensionEnum.isValidFileExtension(image.fileName())) {
+			return List.of();
+		}
+		return List.of(new ImageResponse(image.fileName(), "teste"));
     }
 }

@@ -1,7 +1,7 @@
-package ai.search.engine.core.vectordb;
+package ai.search.engine.core.milvus;
 
 import ai.djl.modality.cv.ImageFactory;
-import ai.search.engine.core.model.CLIPModel;
+import ai.search.engine.core.clip.CLIPModel;
 import io.milvus.grpc.DataType;
 import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
@@ -12,7 +12,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
-import static ai.search.engine.core.vectordb.VectorDBUtils.embeddingToList;
+import static ai.search.engine.core.milvus.VectorDBUtils.embeddingToList;
 
 @JBossLog
 public class VectorDBMainExample {

@@ -22,6 +22,7 @@
 		<lombok.version>1.18.30</lombok.version>
 		<slf4j.version>2.0.10</slf4j.version>
 		<quarkus.version>3.7.4</quarkus.version>
+		<minio.version>8.5.9</minio.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -85,6 +86,11 @@
 			<groupId>ai.djl.huggingface</groupId>
 			<artifactId>tokenizers</artifactId>
 			<version>${djl.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.minio</groupId>
+			<artifactId>minio</artifactId>
+			<version>${minio.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.quarkus</groupId>

@@ -1,4 +1,4 @@
-package ai.search.engine.core.vectordb;
+package ai.search.engine.core.milvus;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;

@@ -1,4 +1,4 @@
-package ai.search.engine.core.vectordb;
+package ai.search.engine.core.milvus;
 
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
@@ -15,7 +15,6 @@ import io.milvus.param.index.CreateIndexParam;
 import io.milvus.param.index.DescribeIndexParam;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.SearchResultsWrapper;
-import io.smallrye.common.annotation.RunOnVirtualThread;
 import io.smallrye.mutiny.Uni;
 import jakarta.json.JsonObject;
 
@@ -24,9 +23,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-import static ai.search.engine.core.vectordb.EmitterToFutureCallBack.emitterToCallback;
-import static ai.search.engine.core.vectordb.VectorDBUtils.createEmitter;
-import static ai.search.engine.core.vectordb.VectorDBUtils.emitException;
+import static ai.search.engine.core.milvus.EmitterToFutureCallBack.emitterToCallback;
+import static ai.search.engine.core.milvus.VectorDBUtils.createEmitter;
+import static ai.search.engine.core.milvus.VectorDBUtils.emitException;
 
 @ThreadSafe
 public class VectorDBCollection {

@@ -10,7 +10,7 @@
  * OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions
  * and limitations under the License.
  */
-package ai.search.engine.core.model;
+package ai.search.engine.core.clip;
 
 import ai.djl.ModelException;
 import ai.djl.inference.Predictor;

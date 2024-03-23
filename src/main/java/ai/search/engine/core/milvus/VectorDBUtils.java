@@ -1,4 +1,4 @@
-package ai.search.engine.core.vectordb;
+package ai.search.engine.core.milvus;
 
 import com.google.common.primitives.Floats;
 import io.milvus.grpc.DataType;

@@ -1,4 +1,4 @@
-package ai.search.engine.core.vectordb;
+package ai.search.engine.core.milvus;
 
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.param.ConnectParam;
@@ -15,7 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static ai.search.engine.core.vectordb.VectorDBUtils.emitException;
+import static ai.search.engine.core.milvus.VectorDBUtils.emitException;
 import static java.util.Objects.requireNonNull;
 
 @JBossLog

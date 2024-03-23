@@ -1,32 +1,31 @@
 package ai.search.engine.core.config;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.experimental.Accessors;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import ai.djl.modality.cv.ImageFactory;
+import ai.search.engine.core.clip.CLIPModel;
+import ai.search.engine.core.milvus.VectorDB;
+import io.minio.MinioAsyncClient;
+import jakarta.enterprise.context.Dependent;
+import jakarta.enterprise.inject.Produces;
+import lombok.SneakyThrows;
 
-@Setter
-@Getter
-@ApplicationScoped
-@Accessors(fluent = true)
+@Dependent
 public class AppConfig {
+	@Produces
+	public MinioAsyncClient minioClient() {
+		return MinioAsyncClient.builder()
+				.endpoint("http://localhost:9000")
+				.credentials("minioadmin", "minioadmin")
+				.build();
+	}
 
-	@ConfigProperty(name = "images.path.from")
-	private String imagesPathFrom;
+	@Produces
+	@SneakyThrows
+	public CLIPModel clipModel() {
+		return new CLIPModel();
+	}
 
-	@ConfigProperty(name = "images.path.to")
-	private String imagesPathTo;
-
-	@ConfigProperty(name = "embeddings.batch.size", defaultValue = "128")
-	private int embeddingsBatchSize;
-
-	@ConfigProperty(name = "vector.db.url")
-	private String dbUrl;
-
-	@ConfigProperty(name = "vector.db.token")
-	private String dbToken;
-
-	@ConfigProperty(name = "vector.db.name")
-	private String dbName;
+	@Produces
+	public ImageFactory  imageFactory() {
+		return ImageFactory.getInstance();
+	}
 }
