@@ -2,7 +2,6 @@ package ai.search.engine.core.minio;
 
 import com.google.common.io.Files;
 import io.minio.*;
-import io.smallrye.common.annotation.RunOnVirtualThread;
 import lombok.SneakyThrows;
 import lombok.extern.jbosslog.JBossLog;
 
@@ -11,12 +10,11 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 @JBossLog
 public abstract class FilePersistanceAbstract {
-	private final String minioBucket;
-	private final MinioAsyncClient minioClient;
+	protected final String minioBucket;
+	protected final MinioAsyncClient minioClient;
 
 	protected FilePersistanceAbstract(String minioBucket, MinioAsyncClient minioClient) {
 		this.minioBucket = minioBucket;

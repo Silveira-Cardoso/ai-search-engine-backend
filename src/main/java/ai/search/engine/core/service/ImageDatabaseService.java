@@ -6,6 +6,7 @@ import ai.search.engine.core.config.AppProperties;
 import ai.search.engine.core.milvus.VectorDB;
 import ai.search.engine.core.milvus.VectorDBCollection;
 import ai.search.engine.core.milvus.VectorDBUtils;
+import ai.search.engine.core.minio.AvailableFilePersistence;
 import io.milvus.grpc.DataType;
 import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
@@ -15,6 +16,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.json.Json;
+import jakarta.json.JsonObject;
 import lombok.SneakyThrows;
 
 import java.io.File;
@@ -27,13 +29,15 @@ import static ai.search.engine.core.milvus.VectorDBUtils.fieldType;
 
 @ApplicationScoped
 public class ImageDatabaseService {
+	private static final String COLLECTION_NAME = "products";
 	@Inject
 	private AppProperties properties;
 	@Inject
 	private CLIPModel clipModel;
 	@Inject
 	private ImageFactory imageFactory;
-
+	@Inject
+	private AvailableFilePersistence availableFilePersistence;
 	private VectorDB database;
 
 	void onStart(@Observes StartupEvent ev) {
@@ -45,18 +49,18 @@ public class ImageDatabaseService {
 		database.close();
 	}
 
-		@SneakyThrows
+	@SneakyThrows
 	public void insertImage(File file) {
 		var img = imageFactory.fromInputStream(new FileInputStream(file));
 		float[] imgFeatures = clipModel.extractImageFeatures(img);
-		var products = database.getOrCreateCollection("products").await().indefinitely();
+		var products = database.getOrCreateCollection(COLLECTION_NAME).await().indefinitely();
 		insertImageOnDB(products, file, VectorDBUtils.embeddingToList(imgFeatures));
 		products.flush().await().indefinitely();
 	}
 
 	@SneakyThrows
 	public void insertImageBatch(List<File> files) {
-		var products = database.getOrCreateCollection("products").await().indefinitely();
+		var products = database.getOrCreateCollection(COLLECTION_NAME).await().indefinitely();
 		List<String> paths = new ArrayList<>();
 		List<List<Float>> embeddings = new ArrayList<>();
 		for (File file : files) {
@@ -66,6 +70,13 @@ public class ImageDatabaseService {
 		}
 		insertImagesOnDb(products, paths, embeddings);
 		products.flush().await().indefinitely();
+	}
+
+	public List<String> searchImages(String predicate) {
+		var search = this.clipModel.extractTextFeatures(predicate);
+		var products = this.database.getOrCreateCollection(COLLECTION_NAME).await().indefinitely();
+		var results = products.search(10, search, "embedding", List.of("path"), JsonObject.EMPTY_JSON_OBJECT).await().indefinitely();
+		return results.getRowRecords(0).stream().map(record -> (String) record.get("path")).toList();
 	}
 
 	private void insertImagesOnDb(VectorDBCollection collection, List<String> paths, List<List<Float>> embeddings) {
@@ -85,7 +96,7 @@ public class ImageDatabaseService {
 	private void initCollection() {
 		database = VectorDB.getOrCreateDatabase(properties.dbUrl(), properties.dbToken(), properties.dbName())
 				.await().indefinitely();
-		var products = database.getOrCreateCollection("products", List.of(
+		var products = database.getOrCreateCollection(COLLECTION_NAME, List.of(
 						fieldType("id", DataType.Int64,
 								builder -> builder.withPrimaryKey(true)
 										.withAutoID(true)),
