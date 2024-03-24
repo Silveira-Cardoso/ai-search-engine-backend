@@ -22,6 +22,7 @@
 		<lombok.version>1.18.30</lombok.version>
 		<slf4j.version>2.0.10</slf4j.version>
 		<quarkus.version>3.7.4</quarkus.version>
+		<onnx.version>1.17.1</onnx.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -80,6 +81,16 @@
 			<groupId>ai.djl.pytorch</groupId>
 			<artifactId>pytorch-model-zoo</artifactId>
 			<version>${djl.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>ai.djl.onnxruntime</groupId>
+			<artifactId>onnxruntime-engine</artifactId>
+			<version>${djl.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.microsoft.onnxruntime</groupId>
+			<artifactId>onnxruntime</artifactId>
+			<version>${onnx.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>ai.djl.huggingface</groupId>

@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import static ai.search.engine.core.vectordb.VectorDBUtils.embeddingToList;
+import static ai.search.engine.core.vectordb.VectorDBUtils.fieldType;
 
 @JBossLog
 public class VectorDBMainExample {
@@ -23,13 +24,13 @@ public class VectorDBMainExample {
 		VectorDB database = VectorDB.getOrCreateDatabase("http://localhost:19530", "root:Milvus", databaseName)
 				.await().indefinitely();
 		VectorDBCollection products = database.getOrCreateCollection("products", List.of(
-				VectorDBUtils.fieldType("id", DataType.Int64,
-						builder -> builder.withAutoID(true)
-								.withPrimaryKey(true)),
-				VectorDBUtils.fieldType("type", DataType.VarChar,
-						builder -> builder.withMaxLength(255)),
-				VectorDBUtils.fieldType("embedding", DataType.FloatVector,
-						builder -> builder.withDimension(512))))
+						fieldType("id", DataType.Int64,
+								builder -> builder.withPrimaryKey(true)
+										.withAutoID(true)),
+						fieldType("path", DataType.VarChar,
+								builder -> builder.withMaxLength(2048)),
+						fieldType("embedding", DataType.FloatVector,
+								builder -> builder.withDimension(512))))
 				.await().indefinitely();
 
 		var indexParam = Json.createObjectBuilder()
