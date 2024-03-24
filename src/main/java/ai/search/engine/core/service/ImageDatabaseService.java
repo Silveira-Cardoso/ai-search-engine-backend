@@ -6,7 +6,7 @@ import ai.search.engine.core.config.AppProperties;
 import ai.search.engine.core.milvus.VectorDB;
 import ai.search.engine.core.milvus.VectorDBCollection;
 import ai.search.engine.core.milvus.VectorDBUtils;
-import ai.search.engine.core.minio.AvailableFilePersistence;
+import ai.search.engine.core.minio.PublicFilePersistence;
 import io.milvus.grpc.DataType;
 import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
@@ -21,6 +21,7 @@ import lombok.SneakyThrows;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,7 @@ public class ImageDatabaseService {
 	@Inject
 	private ImageFactory imageFactory;
 	@Inject
-	private AvailableFilePersistence availableFilePersistence;
+	private PublicFilePersistence publicFilePersistence;
 	private VectorDB database;
 
 	void onStart(@Observes StartupEvent ev) {
@@ -59,13 +60,13 @@ public class ImageDatabaseService {
 	}
 
 	@SneakyThrows
-	public void insertImageBatch(List<File> files) {
+	public void insertImageBatch(Map<String, InputStream> files) {
 		var products = database.getOrCreateCollection(COLLECTION_NAME).await().indefinitely();
 		List<String> paths = new ArrayList<>();
 		List<List<Float>> embeddings = new ArrayList<>();
-		for (File file : files) {
-			paths.add(file.getName());
-			var img = imageFactory.fromInputStream(new FileInputStream(file));
+		for (var file : files.entrySet()) {
+			paths.add(file.getKey());
+			var img = imageFactory.fromInputStream(file.getValue());
 			embeddings.add(VectorDBUtils.embeddingToList(clipModel.extractImageFeatures(img)));
 		}
 		insertImagesOnDb(products, paths, embeddings);
@@ -81,6 +82,7 @@ public class ImageDatabaseService {
 
 	private void insertImagesOnDb(VectorDBCollection collection, List<String> paths, List<List<Float>> embeddings) {
 		collection.insert(Map.of(
+				"type", List.of("fashion"),
 				"path", paths,
 				"embedding", embeddings
 		)).await().indefinitely();
@@ -88,6 +90,7 @@ public class ImageDatabaseService {
 
 	private void insertImageOnDB(VectorDBCollection collection, File file, List<Float> embeddings) {
 		collection.insert(Map.of(
+				"type", List.of("fashion"),
 				"path", List.of(file.getName()),
 				"embedding", embeddings
 		)).await().indefinitely();
@@ -100,6 +103,8 @@ public class ImageDatabaseService {
 						fieldType("id", DataType.Int64,
 								builder -> builder.withPrimaryKey(true)
 										.withAutoID(true)),
+						fieldType("type", DataType.VarChar,
+								builder -> builder.withMaxLength(255)),
 						fieldType("path", DataType.VarChar,
 								builder -> builder.withMaxLength(2048)),
 						fieldType("embedding", DataType.FloatVector,

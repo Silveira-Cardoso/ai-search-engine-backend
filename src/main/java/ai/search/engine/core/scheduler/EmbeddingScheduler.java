@@ -1,6 +1,6 @@
 package ai.search.engine.core.scheduler;
 
-import ai.search.engine.core.minio.AvailableFilePersistence;
+import ai.search.engine.core.minio.PublicFilePersistence;
 import ai.search.engine.core.minio.ImportFilePersistance;
 import ai.search.engine.core.service.ImageDatabaseService;
 import io.quarkus.scheduler.Scheduled;
@@ -8,7 +8,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.jbosslog.JBossLog;
 
-import java.io.File;
+import java.io.InputStream;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @JBossLog
@@ -17,7 +18,7 @@ public class EmbeddingScheduler {
 	@Inject
 	ImportFilePersistance importFilePersistance;
 	@Inject
-	AvailableFilePersistence availableFilePersistence;
+	PublicFilePersistence publicFilePersistence;
 	@Inject
 	ImageDatabaseService imageDatabaseService;
 
@@ -26,13 +27,17 @@ public class EmbeddingScheduler {
 		LOG.info("Starting image import...");
 		var files = importFilePersistance.getFiles();
 		LOG.info("Found " + files.size() + " files to process...");
+		if (files.isEmpty()) {
+			LOG.info("Not files where finded to process...");
+			return;
+		}
 		imageDatabaseService.insertImageBatch(files);
-		files.forEach(this::moveFileToAvaiableAndDeleteFromImport);
+		files.entrySet().forEach(this::moveFileToPublicAndDeleteFromImport);
 		LOG.info("Finished image import...");
 	}
 
-	private void moveFileToAvaiableAndDeleteFromImport(File file) {
-		availableFilePersistence.putFile(file);
+	private void moveFileToPublicAndDeleteFromImport(Map.Entry<String, InputStream> file) {
+		publicFilePersistence.putFile(file);
 		importFilePersistance.deleteFile(file);
 	}
 }

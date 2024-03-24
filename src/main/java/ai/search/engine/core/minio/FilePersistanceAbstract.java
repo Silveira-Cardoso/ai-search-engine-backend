@@ -1,60 +1,61 @@
 package ai.search.engine.core.minio;
 
-import com.google.common.io.Files;
 import io.minio.*;
 import lombok.SneakyThrows;
 import lombok.extern.jbosslog.JBossLog;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
 
 @JBossLog
 public abstract class FilePersistanceAbstract {
 	protected final String minioBucket;
 	protected final MinioAsyncClient minioClient;
+	private final Boolean publicPolicy;
 
-	protected FilePersistanceAbstract(String minioBucket, MinioAsyncClient minioClient) {
+	protected FilePersistanceAbstract(String minioBucket, MinioAsyncClient minioClient, Boolean publicPolicy) {
 		this.minioBucket = minioBucket;
 		this.minioClient = minioClient;
 		createBucketIfNotExists();
+		this.publicPolicy = publicPolicy;
 	}
 
 	@SneakyThrows
-	public void putFile(File file) {
+	public void putFile(Map.Entry<String, InputStream> fileNameAndContent) {
+		String fileName = fileNameAndContent.getKey();
+		InputStream fileContent = fileNameAndContent.getValue();
 		var putArgs = PutObjectArgs.builder()
 				.bucket(minioBucket)
-				.stream(new FileInputStream(file), file.length(), -1)
-				.object(file.getName())
+				.stream(fileContent, fileContent.available(), -1)
+				.object(fileName)
 				.build();
-		var completed = minioClient.putObject(putArgs).thenAccept(objectWriteResponse -> LOG.info("Uploaded file " + file.getName()));
+		var completed = minioClient.putObject(putArgs).thenAccept(objectWriteResponse -> LOG.info("Uploaded file " + fileName));
 		completed.exceptionally(e -> {
-			LOG.error("Ocorreu um erro ao importar o arquivo " + file.getName(), e);
+			LOG.error("Ocorreu um erro ao importar o arquivo " + fileName, e);
 			return null;
 		});
 	}
 
 	@SneakyThrows
-	public void deleteFile(File file) {
+	public void deleteFile(Map.Entry<String, InputStream> file) {
 		var removeArgs = RemoveObjectArgs.builder()
 				.bucket(minioBucket)
-				.object(file.getName())
+				.object(file.getKey())
 				.build();
 		minioClient.removeObject(removeArgs).exceptionally(e -> {
-			LOG.error("Ocorreu um erro ao deletar o arquivo " + file.getName(), e);
+			LOG.error("Ocorreu um erro ao deletar o arquivo " + file.getKey(), e);
 			return null;
 		});
 	}
 
 	@SneakyThrows
-	public List<File> getFiles() {
+	public Map<String, InputStream> getFiles() {
 		var list = minioClient.listObjects(ListObjectsArgs.builder()
 				.bucket(minioBucket)
 				.maxKeys(100)
 				.build());
-		List<File> files = new ArrayList<>();
+		var files = new HashMap<String, InputStream>();
 		for (var item : list) {
 			minioClient.getObject(GetObjectArgs.builder()
 					.bucket(minioBucket)
@@ -62,9 +63,8 @@ public abstract class FilePersistanceAbstract {
 					.build())
 					.thenAccept(response -> {
                         try {
-							var file = new File(response.object());
-                            Files.write(response.readAllBytes(), file);
-							files.add(file);
+                            var byteArray = response.readAllBytes();
+							files.put(response.object(), new ByteArrayInputStream(byteArray));
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -81,12 +81,26 @@ public abstract class FilePersistanceAbstract {
 					if (!exists) {
 						try {
 							LOG.info("Creating bucket " + minioBucket + " ...");
-							minioClient.makeBucket(MakeBucketArgs.builder().bucket(minioBucket).build());
+							minioClient.makeBucket(MakeBucketArgs.builder().bucket(minioBucket).build())
+									.thenAccept(makeBucketResponse -> {
+										if (publicPolicy) {
+											setPublicPolicy();
+										}
+									});
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
 					}
 					return null;
 				});
+	}
+
+	@SneakyThrows
+	private void setPublicPolicy() {
+		var policyArgs = SetBucketPolicyArgs.builder()
+				.bucket(minioBucket)
+				.config("{ \"Version\": \"2012-10-17\", \"Statement\": [ { \"Effect\": \"Allow\", \"Principal\": \"*\", \"Action\": [ \"s3:GetObject\" ], \"Resource\": [ \"arn:aws:s3:::" + minioBucket + "/*\" ] } ] }")
+				.build();
+		minioClient.setBucketPolicy(policyArgs).get();
 	}
 }

@@ -7,9 +7,10 @@ import jakarta.inject.Singleton;
 
 @Singleton
 @Startup
-public class AvailableFilePersistence extends FilePersistanceAbstract{
+public class PublicFilePersistence extends FilePersistanceAbstract {
 	@Inject
-	protected AvailableFilePersistence(MinioAsyncClient minioClient) {
-		super("available", minioClient);
+	protected PublicFilePersistence(MinioAsyncClient minioClient) {
+		super("public", minioClient, true);
 	}
+
 }

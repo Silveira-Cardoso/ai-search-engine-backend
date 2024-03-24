@@ -14,6 +14,7 @@ package ai.search.engine.core.clip;
 
 import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.util.NDImageUtils;
+import ai.djl.ndarray.NDArrays;
 import ai.djl.ndarray.NDList;
 import ai.djl.translate.NoBatchifyTranslator;
 import ai.djl.translate.TranslatorContext;
@@ -37,8 +38,7 @@ public class ImageTranslator implements NoBatchifyTranslator<Image, float[]> {
         int resizedWidth = Math.round(input.getWidth() * percent);
         int resizedHeight = Math.round(input.getHeight() * percent);
 
-        array = NDImageUtils.resize(array, resizedWidth, resizedHeight,
-				Image.Interpolation.BICUBIC);
+        array = NDImageUtils.resize(array, resizedWidth, resizedHeight, Image.Interpolation.BICUBIC);
         array = NDImageUtils.centerCrop(array, 224, 224);
 		// Change from Height, Width, Channels to Channels, Height, Width
         array = NDImageUtils.toTensor(array);
