@@ -24,10 +24,10 @@ public abstract class FilePersistanceAbstract {
 	@SneakyThrows
 	public void putFile(Map.Entry<String, InputStream> fileNameAndContent) {
 		String fileName = fileNameAndContent.getKey();
-		InputStream fileContent = fileNameAndContent.getValue();
+		byte[] fileContent = readFromInputStream(fileNameAndContent.getValue());
 		var putArgs = PutObjectArgs.builder()
 				.bucket(minioBucket)
-				.stream(fileContent, fileContent.available(), -1)
+				.stream(new ByteArrayInputStream(fileContent), fileContent.length, -1)
 				.object(fileName)
 				.build();
 		var completed = minioClient.putObject(putArgs).thenAccept(objectWriteResponse -> LOG.info("Uploaded file " + fileName));
@@ -102,5 +102,18 @@ public abstract class FilePersistanceAbstract {
 				.config("{ \"Version\": \"2012-10-17\", \"Statement\": [ { \"Effect\": \"Allow\", \"Principal\": \"*\", \"Action\": [ \"s3:GetObject\" ], \"Resource\": [ \"arn:aws:s3:::" + minioBucket + "/*\" ] } ] }")
 				.build();
 		minioClient.setBucketPolicy(policyArgs).get();
+	}
+
+	private byte[] readFromInputStream(InputStream inputStream) throws IOException {
+		var outputStream = new ByteArrayOutputStream();
+		byte[] buffer = new byte[1024];
+		int len;
+		if (inputStream.available() == 0) {
+			inputStream.reset();
+		}
+		while ((len = inputStream.read(buffer)) != -1) {
+			outputStream.write(buffer, 0, len);
+		}
+		return outputStream.toByteArray();
 	}
 }

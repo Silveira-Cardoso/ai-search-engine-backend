@@ -82,7 +82,6 @@ public class ImageDatabaseService {
 
 	private void insertImagesOnDb(VectorDBCollection collection, List<String> paths, List<List<Float>> embeddings) {
 		collection.insert(Map.of(
-				"type", List.of("fashion"),
 				"path", paths,
 				"embedding", embeddings
 		)).await().indefinitely();
@@ -90,7 +89,6 @@ public class ImageDatabaseService {
 
 	private void insertImageOnDB(VectorDBCollection collection, File file, List<Float> embeddings) {
 		collection.insert(Map.of(
-				"type", List.of("fashion"),
 				"path", List.of(file.getName()),
 				"embedding", embeddings
 		)).await().indefinitely();
@@ -103,8 +101,6 @@ public class ImageDatabaseService {
 						fieldType("id", DataType.Int64,
 								builder -> builder.withPrimaryKey(true)
 										.withAutoID(true)),
-						fieldType("type", DataType.VarChar,
-								builder -> builder.withMaxLength(255)),
 						fieldType("path", DataType.VarChar,
 								builder -> builder.withMaxLength(2048)),
 						fieldType("embedding", DataType.FloatVector,

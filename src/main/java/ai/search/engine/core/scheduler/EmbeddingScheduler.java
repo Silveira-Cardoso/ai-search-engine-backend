@@ -32,11 +32,11 @@ public class EmbeddingScheduler {
 			return;
 		}
 		imageDatabaseService.insertImageBatch(files);
-		files.entrySet().forEach(this::moveFileToPublicAndDeleteFromImport);
+		files.entrySet().forEach(this::moveFileToAvaiableAndDeleteFromImport);
 		LOG.info("Finished image import...");
 	}
 
-	private void moveFileToPublicAndDeleteFromImport(Map.Entry<String, InputStream> file) {
+	private void moveFileToAvaiableAndDeleteFromImport(Map.Entry<String, InputStream> file) {
 		publicFilePersistence.putFile(file);
 		importFilePersistance.deleteFile(file);
 	}
