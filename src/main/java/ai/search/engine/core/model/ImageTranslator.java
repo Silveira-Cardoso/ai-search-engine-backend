@@ -13,7 +13,10 @@
 package ai.search.engine.core.model;
 
 import ai.djl.modality.cv.Image;
-import ai.djl.modality.cv.util.NDImageUtils;
+import ai.djl.modality.cv.transform.CenterCrop;
+import ai.djl.modality.cv.transform.Resize;
+import ai.djl.modality.cv.transform.ToTensor;
+import ai.djl.modality.cv.translator.ImageClassificationTranslator;
 import ai.djl.ndarray.NDList;
 import ai.djl.translate.NoBatchifyTranslator;
 import ai.djl.translate.TranslatorContext;
@@ -37,12 +40,36 @@ public class ImageTranslator implements NoBatchifyTranslator<Image, float[]> {
         int resizedWidth = Math.round(input.getWidth() * percent);
         int resizedHeight = Math.round(input.getHeight() * percent);
 
-        array = NDImageUtils.resize(array, resizedWidth, resizedHeight,
-				Image.Interpolation.BICUBIC);
-        array = NDImageUtils.centerCrop(array, 224, 224);
-		// Change from Height, Width, Channels to Channels, Height, Width
-        array = NDImageUtils.toTensor(array);
-        var placeholder = ctx.getNDManager().create("");
+        //array = NDImageUtils.resize(array, resizedWidth, resizedHeight,
+		//		Image.Interpolation.BICUBIC);
+        //array = NDImageUtils.centerCrop(array, 224, 224);
+		//// Change from Height, Width, Channels to Channels, Height, Width
+        //array = NDImageUtils.toTensor(array);
+
+		System.out.println(resizedWidth);
+		System.out.println(resizedHeight);
+
+		var preprocess = ImageClassificationTranslator.builder()
+				.addTransform(new Resize(resizedWidth, resizedHeight, Image.Interpolation.BICUBIC))
+				.addTransform(new CenterCrop(224, 224))
+				// Change from Height, Width, Channels to Channels, Height, Width
+				.addTransform(new ToTensor())
+				.build();
+
+		array = preprocess.processInput(ctx, input).singletonOrThrow();
+		/**
+		 * Avaliar opção abaixo
+		 * 		var preprocess = ImageClassificationTranslator.builder()
+		 * 				.addTransform(new Resize(resizedWidth, resizedHeight, Image.Interpolation.BICUBIC))
+		 * 				.addTransform(new CenterCrop(224, 224))
+		 * 				// Change from Height, Width, Channels to Channels, Height, Width
+		 * 				.addTransform(new ToTensor())
+		 * 				.build();
+		 *
+		 * 		array = preprocess.processInput(ctx, input).singletonOrThrow();
+		 */
+
+		var placeholder = ctx.getNDManager().create("");
 		// Placeholder to call method get_image_features:
 		// https://huggingface.co/docs/transformers/model_doc/clip#transformers.TFCLIPModel.get_image_features
         placeholder.setName("module_method:get_image_features");

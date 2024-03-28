@@ -5,10 +5,12 @@ import ai.djl.modality.cv.ImageFactory;
 import ai.djl.ndarray.NDList;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ZooModel;
+import ai.djl.training.util.ProgressBar;
 import ai.djl.translate.NoBatchifyTranslator;
 import ai.djl.translate.TranslatorContext;
 import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
+import io.quarkus.fs.util.ZipUtils;
 
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -28,11 +30,12 @@ public class Temp2 {
 		//sentence_embedding
 		//https://huggingface.co/canavar/clip-ViT-B-32-multilingual-v1-ONNX
 
-		String modelUrl = "D:/workspace/models/clip-ViT-B-32-multilingual-v1-ONNX/clip-ViT-B-32-multilingual-v1-ONNX.zip";
+		//ZipUtils.unzip(Paths.get("C:\\Users\\Alves\\Desktop\\cnn\\zoo-model.zip"), Paths.get("C:\\Users\\Alves\\Desktop\\cnn\\"));
+
 		var criteria = Criteria.builder()
 				.setTypes(String.class, float[].class)
-				//.optModelPath(Paths.get(modelUrl))
-				.optModelUrls("https://huggingface.co/canavar/clip-ViT-B-32-multilingual-v1-ONNX")
+				.optProgress(new ProgressBar("Loading model...", 100))
+				.optModelUrls("https://huggingface.co/canavar/clip-ViT-B-32-multilingual-v1-ONNX/resolve/main/zoo-model.zip?download=true")
 				.optTranslator(new TextTranslator2())
 				.optEngine("OnnxRuntime") // use OnnxRuntime engine by default
 				.build();
