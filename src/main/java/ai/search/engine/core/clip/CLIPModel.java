@@ -12,22 +12,9 @@
  */
 package ai.search.engine.core.clip;
 
-import ai.djl.ModelException;
 import ai.djl.inference.Predictor;
 import ai.djl.modality.cv.Image;
-import ai.djl.ndarray.NDList;
-import ai.djl.repository.zoo.Criteria;
-import ai.djl.repository.zoo.ZooModel;
-import ai.djl.translate.NoopTranslator;
-import ai.djl.util.Pair;
-import com.google.common.collect.Streams;
 import lombok.SneakyThrows;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.List;
-
-import static java.util.Objects.requireNonNull;
 
 /**
  * An example of inference using an CLIP model.
@@ -38,30 +25,13 @@ import static java.util.Objects.requireNonNull;
  */
 public class CLIPModel implements AutoCloseable {
 
-    private final ZooModel<NDList, NDList> clip;
     private final Predictor<Image, float[]> imageFeatureExtractor;
     private final Predictor<String, float[]> textFeatureExtractor;
-    private final Predictor<Pair<Image, String>, float[]> imgTextComparator;
 
-	public CLIPModel() throws ModelException, IOException {
-		this("https://resources.djl.ai/demo/pytorch/clip.zip");
-	}
-
-	public CLIPModel(Path modelPath) throws ModelException, IOException {
-		this(requireNonNull(modelPath).toUri().toURL().toString());
-	}
-
-	public CLIPModel(String uri) throws ModelException, IOException {
-		var criteria = Criteria.builder()
-				.setTypes(NDList.class, NDList.class)
-				.optModelUrls(uri)
-				.optTranslator(new NoopTranslator())
-				.optEngine("PyTorch")
-				.build();
-		clip = criteria.loadModel();
-		imageFeatureExtractor = clip.newPredictor(new ImageTranslator());
-		textFeatureExtractor = clip.newPredictor(new TextTranslator());
-		imgTextComparator = clip.newPredictor(new ImageTextTranslator());
+	public CLIPModel(Predictor<Image, float[]> imageFeatureExtractor,
+					 Predictor<String, float[]> textFeatureExtractorSupplier) {
+		this.imageFeatureExtractor = imageFeatureExtractor;
+		this.textFeatureExtractor = textFeatureExtractorSupplier;
 	}
 
 	@SneakyThrows
@@ -74,29 +44,9 @@ public class CLIPModel implements AutoCloseable {
         return imageFeatureExtractor.predict(input);
     }
 
-	@SneakyThrows
-	public List<float[]> batchExtractImageFeatures(List<Image> inputs) {
-		return imageFeatureExtractor.batchPredict(inputs);
+	@Override
+	public void close() {
+		imageFeatureExtractor.close();
+		textFeatureExtractor.close();
 	}
-
-	@SneakyThrows
-    public float[] compareTextAndImage(Image image, String text) {
-        return imgTextComparator.predict(new Pair<>(image, text));
-    }
-
-	@SneakyThrows
-	public List<float[]> batchCompareTextAndImage(List<Image> images, List<String> texts) {
-		var batch = Streams.zip(images.stream(), texts.stream(), Pair::new)
-				.toList();
-		return imgTextComparator.batchPredict(batch);
-	}
-
-    /** {@inheritDoc} */
-    @Override
-    public void close() {
-        imageFeatureExtractor.close();
-        textFeatureExtractor.close();
-        imgTextComparator.close();
-        clip.close();
-    }
 }

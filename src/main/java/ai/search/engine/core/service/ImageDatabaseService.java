@@ -20,7 +20,6 @@ import jakarta.json.JsonObject;
 import lombok.SneakyThrows;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,7 +51,7 @@ public class ImageDatabaseService {
 
 	@SneakyThrows
 	public void insertImage(File file) {
-		var img = imageFactory.fromInputStream(new FileInputStream(file));
+		var img = imageFactory.fromFile(file.toPath());
 		float[] imgFeatures = clipModel.extractImageFeatures(img);
 		var products = database.getOrCreateCollection(COLLECTION_NAME).await().indefinitely();
 		insertImageOnDB(products, file, VectorDBUtils.embeddingToList(imgFeatures));
@@ -66,9 +65,12 @@ public class ImageDatabaseService {
 		List<List<Float>> embeddings = new ArrayList<>();
 		for (var file : files.entrySet()) {
 			paths.add(file.getKey());
-			var img = imageFactory.fromInputStream(file.getValue());
-			embeddings.add(VectorDBUtils.embeddingToList(clipModel.extractImageFeatures(img)));
+			try (var in = file.getValue()) {
+				var img = imageFactory.fromInputStream(in);
+				embeddings.add(VectorDBUtils.embeddingToList(clipModel.extractImageFeatures(img)));
+			}
 		}
+
 		insertImagesOnDb(products, paths, embeddings);
 		products.flush().await().indefinitely();
 	}
@@ -76,8 +78,12 @@ public class ImageDatabaseService {
 	public List<String> searchImages(String predicate) {
 		var search = this.clipModel.extractTextFeatures(predicate);
 		var products = this.database.getOrCreateCollection(COLLECTION_NAME).await().indefinitely();
-		var results = products.search(10, search, "embedding", List.of("path"), JsonObject.EMPTY_JSON_OBJECT).await().indefinitely();
-		return results.getRowRecords(0).stream().map(record -> (String) record.get("path")).toList();
+		var results = products.search(10, search, "embedding", List.of("path"),
+				JsonObject.EMPTY_JSON_OBJECT).await().indefinitely();
+		return results.getRowRecords(0)
+				.stream()
+				.map(record -> (String) record.get("path"))
+				.toList();
 	}
 
 	private void insertImagesOnDb(VectorDBCollection collection, List<String> paths, List<List<Float>> embeddings) {

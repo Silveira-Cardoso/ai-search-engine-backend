@@ -1,5 +1,6 @@
 package ai.search.engine.core.minio;
 
+import com.google.common.io.ByteStreams;
 import io.minio.*;
 import lombok.SneakyThrows;
 import lombok.extern.jbosslog.JBossLog;
@@ -9,28 +10,34 @@ import java.util.HashMap;
 import java.util.Map;
 
 @JBossLog
-public abstract class FilePersistanceAbstract {
+public abstract class FilePersistenceAbstract {
 	protected final String minioBucket;
 	protected final MinioAsyncClient minioClient;
 	private final Boolean publicPolicy;
+	private final int batchSize;
 
-	protected FilePersistanceAbstract(String minioBucket, MinioAsyncClient minioClient, Boolean publicPolicy) {
+	protected FilePersistenceAbstract(String minioBucket, MinioAsyncClient minioClient, Boolean publicPolicy, int batchSize) {
 		this.minioBucket = minioBucket;
 		this.minioClient = minioClient;
 		createBucketIfNotExists();
 		this.publicPolicy = publicPolicy;
+		this.batchSize = batchSize;
 	}
 
 	@SneakyThrows
 	public void putFile(Map.Entry<String, InputStream> fileNameAndContent) {
 		String fileName = fileNameAndContent.getKey();
-		byte[] fileContent = readFromInputStream(fileNameAndContent.getValue());
+		byte[] fileContent;
+		try (var in = fileNameAndContent.getValue()) {
+			fileContent = ByteStreams.toByteArray(in);
+		}
 		var putArgs = PutObjectArgs.builder()
 				.bucket(minioBucket)
 				.stream(new ByteArrayInputStream(fileContent), fileContent.length, -1)
 				.object(fileName)
 				.build();
-		var completed = minioClient.putObject(putArgs).thenAccept(objectWriteResponse -> LOG.info("Uploaded file " + fileName));
+		var completed = minioClient.putObject(putArgs)
+				.thenAccept(objectWriteResponse -> LOG.info("Uploaded file " + fileName));
 		completed.exceptionally(e -> {
 			LOG.error("Ocorreu um erro ao importar o arquivo " + fileName, e);
 			return null;
@@ -53,23 +60,18 @@ public abstract class FilePersistanceAbstract {
 	public Map<String, InputStream> getFiles() {
 		var list = minioClient.listObjects(ListObjectsArgs.builder()
 				.bucket(minioBucket)
-				.maxKeys(100)
+				.maxKeys(batchSize)
 				.build());
 		var files = new HashMap<String, InputStream>();
 		for (var item : list) {
 			minioClient.getObject(GetObjectArgs.builder()
-					.bucket(minioBucket)
-					.object(item.get().objectName())
-					.build())
-					.thenAccept(response -> {
-                        try {
-                            var byteArray = response.readAllBytes();
-							files.put(response.object(), new ByteArrayInputStream(byteArray));
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }).get();
+						.bucket(minioBucket)
+						.object(item.get().objectName())
+						.build())
+					.thenAccept(response -> files.put(response.object(), response))
+					.get();
 		}
+
 		return files;
 	}
 
@@ -88,7 +90,7 @@ public abstract class FilePersistanceAbstract {
 										}
 									});
 						} catch (Exception e) {
-							e.printStackTrace();
+							LOG.error("Ocorreu um erro ao criar o bucket " + minioBucket, e);
 						}
 					}
 					return null;
@@ -102,18 +104,5 @@ public abstract class FilePersistanceAbstract {
 				.config("{ \"Version\": \"2012-10-17\", \"Statement\": [ { \"Effect\": \"Allow\", \"Principal\": \"*\", \"Action\": [ \"s3:GetObject\" ], \"Resource\": [ \"arn:aws:s3:::" + minioBucket + "/*\" ] } ] }")
 				.build();
 		minioClient.setBucketPolicy(policyArgs).get();
-	}
-
-	private byte[] readFromInputStream(InputStream inputStream) throws IOException {
-		var outputStream = new ByteArrayOutputStream();
-		byte[] buffer = new byte[1024];
-		int len;
-		if (inputStream.available() == 0) {
-			inputStream.reset();
-		}
-		while ((len = inputStream.read(buffer)) != -1) {
-			outputStream.write(buffer, 0, len);
-		}
-		return outputStream.toByteArray();
 	}
 }

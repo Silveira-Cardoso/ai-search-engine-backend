@@ -1,7 +1,7 @@
 package ai.search.engine.core.scheduler;
 
 import ai.search.engine.core.minio.PublicFilePersistence;
-import ai.search.engine.core.minio.ImportFilePersistance;
+import ai.search.engine.core.minio.ImportFilePersistence;
 import ai.search.engine.core.service.ImageDatabaseService;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 @ApplicationScoped
 public class EmbeddingScheduler {
 	@Inject
-	ImportFilePersistance importFilePersistance;
+	ImportFilePersistence importFilePersistance;
 	@Inject
 	PublicFilePersistence publicFilePersistence;
 	@Inject

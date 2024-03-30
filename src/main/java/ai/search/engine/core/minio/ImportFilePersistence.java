@@ -7,9 +7,9 @@ import jakarta.inject.Singleton;
 
 @Singleton
 @Startup
-public class ImportFilePersistance extends FilePersistanceAbstract{
+public class ImportFilePersistence extends FilePersistenceAbstract {
 	@Inject
-	protected ImportFilePersistance(MinioAsyncClient minioClient) {
-		super("import", minioClient, false);
+	protected ImportFilePersistence(MinioAsyncClient minioClient) {
+		super("import", minioClient, false, batchSize);
 	}
 }

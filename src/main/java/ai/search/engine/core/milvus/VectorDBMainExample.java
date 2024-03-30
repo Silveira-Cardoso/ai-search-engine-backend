@@ -2,6 +2,7 @@ package ai.search.engine.core.milvus;
 
 import ai.djl.modality.cv.ImageFactory;
 import ai.search.engine.core.clip.CLIPModel;
+import ai.search.engine.core.config.ModelConfig;
 import io.milvus.grpc.DataType;
 import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
@@ -43,7 +44,10 @@ public class VectorDBMainExample {
 
 		var imageFactory = ImageFactory.getInstance();
 		var imgPathTest = "/data/cv/fashion/1000000151.jpg";
-		try (var model = new CLIPModel()) {
+		var modelConfig = new ModelConfig();
+		try (var modelZoo = modelConfig.clipModelZoo();
+			 var multiModelZoo = modelConfig.multilingualCLIPModelZoo();
+			 var model = modelConfig.clipModel(modelZoo, multiModelZoo)) {
 
 			var image = imageFactory.fromFile(Paths.get(imgPathTest));
 			float[] embedding = model.extractImageFeatures(image);

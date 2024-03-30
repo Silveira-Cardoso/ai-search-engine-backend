@@ -29,4 +29,13 @@ public class AppProperties {
 
 	@ConfigProperty(name = "vector.db.name")
 	private String dbName;
+
+	@ConfigProperty(name = "clip.model.url")
+	private String clipModelUrl;
+
+	@ConfigProperty(name = "clip.model.multilingual.enable")
+	private boolean clipModelMultilingualEnable;
+
+	@ConfigProperty(name = "clip.model.multilingual.url")
+	private String clipModelMultilingualUrl;
 }
