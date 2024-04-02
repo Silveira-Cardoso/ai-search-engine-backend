@@ -13,7 +13,9 @@ import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import lombok.SneakyThrows;
+import lombok.extern.jbosslog.JBossLog;
 
+@JBossLog
 @Dependent
 public class ModelConfig {
 
@@ -63,15 +65,18 @@ public class ModelConfig {
 	}
 
 	public void disposeClipModel(@Disposes CLIPModel clipModel) {
+		LOG.debug("Closing clip model");
 		clipModel.close();
 	}
 
 	public void disposeClipModelZoo(@Disposes ZooModel<NDList, NDList> clipModelZoo) {
+		LOG.debug("Closing clip model zoo: " + clipModelZoo.getName());
 		clipModelZoo.close();
 	}
 
 	public void disposeMultilingualCLIPModelZoo(@Disposes ZooModel<String, float[]> multilingualCLIPModelZoo) {
 		if (!properties.clipModelMultilingualEnable()) return;
+		LOG.debug("Closing multilingual clip model zoo: " + multilingualCLIPModelZoo.getName());
 		multilingualCLIPModelZoo.close();
 	}
 }

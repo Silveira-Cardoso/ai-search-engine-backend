@@ -20,10 +20,14 @@ import java.util.List;
 @Path("/search")
 public class SearchResource {
 
-	@Inject
-	private ImageDatabaseService imageDatabaseService;
+	private final ImageDatabaseService imageDatabaseService;
 
-    @POST
+	@Inject
+	public SearchResource(ImageDatabaseService imageDatabaseService) {
+		this.imageDatabaseService = imageDatabaseService;
+	}
+
+	@POST
 	@Path("/by-image")
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)

@@ -12,11 +12,11 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @Accessors(fluent = true)
 public class AppProperties {
 
-	@ConfigProperty(name = "images.path.from")
-	private String imagesPathFrom;
+	@ConfigProperty(name = "bucket.from")
+	private String bucketFrom;
 
-	@ConfigProperty(name = "images.path.to")
-	private String imagesPathTo;
+	@ConfigProperty(name = "bucket.to")
+	private String bucketTo;
 
 	@ConfigProperty(name = "embeddings.batch.size", defaultValue = "128")
 	private int embeddingsBatchSize;

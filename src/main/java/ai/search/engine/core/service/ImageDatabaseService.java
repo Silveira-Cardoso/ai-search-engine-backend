@@ -61,14 +61,15 @@ public class ImageDatabaseService {
 	@SneakyThrows
 	public void insertImageBatch(Map<String, InputStream> files) {
 		var products = database.getOrCreateCollection(COLLECTION_NAME).await().indefinitely();
-		List<String> paths = new ArrayList<>();
-		List<List<Float>> embeddings = new ArrayList<>();
+		var paths = new ArrayList<String>();
+		var embeddings = new ArrayList<List<Float>>();
 		for (var file : files.entrySet()) {
 			paths.add(file.getKey());
-			try (var in = file.getValue()) {
-				var img = imageFactory.fromInputStream(in);
-				embeddings.add(VectorDBUtils.embeddingToList(clipModel.extractImageFeatures(img)));
-			}
+			var in = file.getValue();
+			in.mark(0);
+			var img = imageFactory.fromInputStream(file.getValue());
+			embeddings.add(VectorDBUtils.embeddingToList(clipModel.extractImageFeatures(img)));
+			in.reset();
 		}
 
 		insertImagesOnDb(products, paths, embeddings);

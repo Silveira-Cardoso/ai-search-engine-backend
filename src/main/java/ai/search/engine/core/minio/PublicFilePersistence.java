@@ -11,6 +11,6 @@ import jakarta.inject.Singleton;
 public class PublicFilePersistence extends FilePersistenceAbstract {
 	@Inject
 	protected PublicFilePersistence(MinioAsyncClient minioClient, AppProperties properties) {
-		super("public", minioClient, true, properties.embeddingsBatchSize());
+		super(properties.bucketTo(), minioClient, true, properties.embeddingsBatchSize());
 	}
 }

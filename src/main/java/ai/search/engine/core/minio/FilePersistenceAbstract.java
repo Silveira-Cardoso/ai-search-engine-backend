@@ -1,13 +1,17 @@
 package ai.search.engine.core.minio;
 
+import com.google.common.collect.Streams;
 import com.google.common.io.ByteStreams;
 import io.minio.*;
 import lombok.SneakyThrows;
 import lombok.extern.jbosslog.JBossLog;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @JBossLog
 public abstract class FilePersistenceAbstract {
@@ -27,10 +31,7 @@ public abstract class FilePersistenceAbstract {
 	@SneakyThrows
 	public void putFile(Map.Entry<String, InputStream> fileNameAndContent) {
 		String fileName = fileNameAndContent.getKey();
-		byte[] fileContent;
-		try (var in = fileNameAndContent.getValue()) {
-			fileContent = ByteStreams.toByteArray(in);
-		}
+		byte[] fileContent = ByteStreams.toByteArray(fileNameAndContent.getValue());
 		var putArgs = PutObjectArgs.builder()
 				.bucket(minioBucket)
 				.stream(new ByteArrayInputStream(fileContent), fileContent.length, -1)
@@ -58,21 +59,34 @@ public abstract class FilePersistenceAbstract {
 
 	@SneakyThrows
 	public Map<String, InputStream> getFiles() {
-		var list = minioClient.listObjects(ListObjectsArgs.builder()
+		var iter = minioClient.listObjects(ListObjectsArgs.builder()
 				.bucket(minioBucket)
 				.maxKeys(batchSize)
+				.recursive(true)
 				.build());
+		var list = Streams.stream(iter)
+				.limit(batchSize)
+				.toList();
 		var files = new HashMap<String, InputStream>();
+		var futures = new ArrayList<CompletableFuture<Void>>(list.size());
 		for (var item : list) {
-			minioClient.getObject(GetObjectArgs.builder()
+			var future = minioClient.getObject(GetObjectArgs.builder()
 						.bucket(minioBucket)
 						.object(item.get().objectName())
 						.build())
-					.thenAccept(response -> files.put(response.object(), response))
-					.get();
+					.thenAccept(response -> files.put(response.object(), toByteArray(response)));
+			futures.add(future);
 		}
-
+		CompletableFuture.allOf(futures.toArray(new CompletableFuture[list.size()])).join();
 		return files;
+	}
+
+	@SneakyThrows
+	private InputStream toByteArray(GetObjectResponse response) {
+		try (response) {
+			var array = ByteStreams.toByteArray(response);
+			return new ByteArrayInputStream(array, 0, array.length);
+		}
 	}
 
 	@SneakyThrows

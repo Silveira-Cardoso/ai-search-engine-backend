@@ -14,7 +14,7 @@ public enum FileExtensionEnum {
 	public static boolean isValidFileExtension(String fileName) {
 		var lastIndexOfDot = fileName.lastIndexOf('.');
 		var fileExtension = fileName.substring(lastIndexOfDot);
-		for (FileExtensionEnum extension : values()) {
+		for (var extension : values()) {
 			if (extension.fileExtension.equals(fileExtension)) {
 				return true;
 			}
