@@ -37,7 +37,8 @@ public class SearchResource {
 			return List.of();
 		}
 
-		return List.of(new ImageResponse(image.fileName(), image.uploadedFile().toString()));
+		var result = imageDatabaseService.searchImages(image.uploadedFile());
+		return result.stream().map(path -> new ImageResponse(path, path)).toList();
     }
 
 	@GET

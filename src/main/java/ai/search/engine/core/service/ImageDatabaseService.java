@@ -10,6 +10,7 @@ import ai.search.engine.core.minio.PublicFilePersistence;
 import io.milvus.grpc.DataType;
 import io.milvus.param.IndexType;
 import io.milvus.param.MetricType;
+import io.quarkus.logging.Log;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -18,9 +19,11 @@ import jakarta.inject.Inject;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +41,10 @@ public class ImageDatabaseService {
 	private ImageFactory imageFactory;
 	@Inject
 	private PublicFilePersistence publicFilePersistence;
+	@Inject
+	private ByteArrayService byteArrayService;
+	@Inject
+	private ImageValidator imageValidator;
 	private VectorDB database;
 
 	void onStart(@Observes StartupEvent ev) {
@@ -76,15 +83,34 @@ public class ImageDatabaseService {
 		products.flush().await().indefinitely();
 	}
 
-	public List<String> searchImages(String predicate) {
-		var search = this.clipModel.extractTextFeatures(predicate);
-		var products = this.database.getOrCreateCollection(COLLECTION_NAME).await().indefinitely();
+	@SneakyThrows
+	public List<String> searchImages(Path imagePath) {
+		var in = byteArrayService.toByteArray(imagePath);
+		if (imageValidator.isValid(in)) {
+			Log.info("Invalid image type: " + imagePath);
+			return List.of();
+		}
+
+		var img = imageFactory.fromInputStream(in);
+		var search = clipModel.extractImageFeatures(img);
+		return searchEmbedding(search);
+	}
+
+	@NotNull
+	private List<String> searchEmbedding(float[] search) {
+		var products = database.getOrCreateCollection(COLLECTION_NAME)
+				.await().indefinitely();
 		var results = products.search(10, search, "embedding", List.of("path"),
 				JsonObject.EMPTY_JSON_OBJECT).await().indefinitely();
 		return results.getRowRecords(0)
 				.stream()
 				.map(record -> (String) record.get("path"))
 				.toList();
+	}
+
+	public List<String> searchImages(String predicate) {
+		var search = this.clipModel.extractTextFeatures(predicate);
+		return searchEmbedding(search);
 	}
 
 	private void insertImagesOnDb(VectorDBCollection collection, List<String> paths, List<List<Float>> embeddings) {

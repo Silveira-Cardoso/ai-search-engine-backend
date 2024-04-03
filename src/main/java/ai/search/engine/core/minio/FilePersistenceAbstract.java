@@ -1,5 +1,6 @@
 package ai.search.engine.core.minio;
 
+import ai.search.engine.core.service.ByteArrayService;
 import com.google.common.collect.Streams;
 import com.google.common.io.ByteStreams;
 import io.minio.*;
@@ -17,12 +18,15 @@ import java.util.concurrent.CompletableFuture;
 public abstract class FilePersistenceAbstract {
 	protected final String minioBucket;
 	protected final MinioAsyncClient minioClient;
+	private final ByteArrayService byteArrayService;
 	private final Boolean publicPolicy;
 	private final int batchSize;
 
-	protected FilePersistenceAbstract(String minioBucket, MinioAsyncClient minioClient, Boolean publicPolicy, int batchSize) {
+	protected FilePersistenceAbstract(String minioBucket, MinioAsyncClient minioClient,
+									  ByteArrayService byteArrayService, Boolean publicPolicy, int batchSize) {
 		this.minioBucket = minioBucket;
 		this.minioClient = minioClient;
+		this.byteArrayService = byteArrayService;
 		createBucketIfNotExists();
 		this.publicPolicy = publicPolicy;
 		this.batchSize = batchSize;
@@ -74,19 +78,11 @@ public abstract class FilePersistenceAbstract {
 						.bucket(minioBucket)
 						.object(item.get().objectName())
 						.build())
-					.thenAccept(response -> files.put(response.object(), toByteArray(response)));
+					.thenAccept(response -> files.put(response.object(), byteArrayService.toByteArray(response)));
 			futures.add(future);
 		}
 		CompletableFuture.allOf(futures.toArray(new CompletableFuture[list.size()])).join();
 		return files;
-	}
-
-	@SneakyThrows
-	private InputStream toByteArray(GetObjectResponse response) {
-		try (response) {
-			var array = ByteStreams.toByteArray(response);
-			return new ByteArrayInputStream(array, 0, array.length);
-		}
 	}
 
 	@SneakyThrows
@@ -107,8 +103,9 @@ public abstract class FilePersistenceAbstract {
 							LOG.error("Ocorreu um erro ao criar o bucket " + minioBucket, e);
 						}
 					}
+
 					return null;
-				});
+				}).join();
 	}
 
 	@SneakyThrows
