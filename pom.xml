@@ -20,6 +20,8 @@
 		<quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
 		<quarkus.platform.version>3.7.4</quarkus.platform.version>
 		<quarkus.version>3.7.4</quarkus.version>
+		<pytorch.version>2.1.1</pytorch.version>
+		<onnxruntime.version>1.17.1</onnxruntime.version>
 		<skipITs>true</skipITs>
 		<slf4j.version>2.0.10</slf4j.version>
 		<surefire-plugin.version>3.2.5</surefire-plugin.version>
@@ -86,7 +88,72 @@
 			<groupId>ai.djl.onnxruntime</groupId>
 			<artifactId>onnxruntime-engine</artifactId>
 			<version>${djl.version}</version>
+			<scope>runtime</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>com.microsoft.onnxruntime</groupId>
+					<artifactId>onnxruntime</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
+		<!-- In case you want to use CPU only -->
+		<!--
+		<dependency>
+			<groupId>ai.djl.onnxruntime</groupId>
+			<artifactId>onnxruntime-engine</artifactId>
+			<version>${djl.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		-->
+		<!-- In case you want to use GPU -->
+		<dependency>
+			<groupId>ai.djl.onnxruntime</groupId>
+			<artifactId>onnxruntime-engine</artifactId>
+			<version>${djl.version}</version>
+			<scope>runtime</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>com.microsoft.onnxruntime</groupId>
+					<artifactId>onnxruntime</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.microsoft.onnxruntime</groupId>
+			<artifactId>onnxruntime_gpu</artifactId>
+			<version>${onnxruntime.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- In case you want to use GPU in Windows -->
+		<dependency>
+			<groupId>ai.djl.pytorch</groupId>
+			<artifactId>pytorch-native-cu121</artifactId>
+			<classifier>win-x86_64</classifier>
+			<version>${pytorch.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>ai.djl.pytorch</groupId>
+			<artifactId>pytorch-jni</artifactId>
+			<version>${pytorch.version}-${djl.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- In case you want to use GPU in Linux -->
+		<!--
+		<dependency>
+			<groupId>ai.djl.pytorch</groupId>
+			<artifactId>pytorch-native-cu121-precxx11</artifactId>
+			<classifier>linux-x86_64</classifier>
+			<version>${pytorch.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>ai.djl.pytorch</groupId>
+			<artifactId>pytorch-jni</artifactId>
+			<version>${pytorch.version}-${djl.version}</version>
+			<scope>runtime</scope>
+		</dependency>
+		-->
 		<dependency>
 			<groupId>ai.djl.huggingface</groupId>
 			<artifactId>tokenizers</artifactId>

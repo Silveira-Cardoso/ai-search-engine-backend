@@ -21,6 +21,13 @@ You can run your application in dev mode that enables live coding using:
 ./mvnw compile quarkus:dev -Dsuspend
 ```
 
+## DJL (Deep Java Library)
+
+- [Inference performance optimization](https://djl.ai/docs/development/inference_performance_optimization.html)
+- [PyTorch GPU](https://docs.djl.ai/engines/pytorch/pytorch-engine/index.html#windows-gpu)
+- [ONNX GPU](https://djl.ai/engines/onnxruntime/onnxruntime-engine/#install-gpu-package)
+- [FAQ](https://djl.ai/docs/faq.html)
+
 > **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at http://localhost:8080/q/dev/.
 
 ## Packaging and running the application
