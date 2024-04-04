@@ -16,6 +16,8 @@ import ai.djl.inference.Predictor;
 import ai.djl.modality.cv.Image;
 import lombok.SneakyThrows;
 
+import java.util.List;
+
 /**
  * An example of inference using an CLIP model.
  *
@@ -43,6 +45,11 @@ public class CLIPModel implements AutoCloseable {
     public float[] extractImageFeatures(Image input) {
         return imageFeatureExtractor.predict(input);
     }
+
+	@SneakyThrows
+	public List<float[]> batchExtractImageFeatures(List<Image> inputs) {
+		return imageFeatureExtractor.batchPredict(inputs);
+	}
 
 	@Override
 	public void close() {

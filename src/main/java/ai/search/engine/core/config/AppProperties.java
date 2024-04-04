@@ -18,8 +18,8 @@ public class AppProperties {
 	@ConfigProperty(name = "bucket.to")
 	private String bucketTo;
 
-	@ConfigProperty(name = "embeddings.batch.size", defaultValue = "128")
-	private int embeddingsBatchSize;
+	@ConfigProperty(name = "file.imports.batch.size", defaultValue = "128")
+	private int fileImportsBatchSize;
 
 	@ConfigProperty(name = "vector.db.url")
 	private String dbUrl;

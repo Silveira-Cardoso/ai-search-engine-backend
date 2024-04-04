@@ -1,5 +1,6 @@
 package ai.search.engine.core.service;
 
+import ai.djl.modality.cv.Image;
 import ai.djl.modality.cv.ImageFactory;
 import ai.search.engine.core.clip.CLIPModel;
 import ai.search.engine.core.config.AppProperties;
@@ -19,14 +20,17 @@ import jakarta.inject.Inject;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import lombok.SneakyThrows;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static ai.search.engine.core.milvus.VectorDBUtils.fieldType;
 
@@ -68,19 +72,16 @@ public class ImageDatabaseService {
 	@SneakyThrows
 	public void insertImageBatch(Map<String, InputStream> files) {
 		var products = database.getOrCreateCollection(COLLECTION_NAME).await().indefinitely();
-		var paths = new ArrayList<String>();
-		var embeddings = new ArrayList<List<Float>>();
-		for (var file : files.entrySet()) {
-			paths.add(file.getKey());
-			var in = file.getValue();
-			in.mark(0);
-			var img = imageFactory.fromInputStream(file.getValue());
-			embeddings.add(VectorDBUtils.embeddingToList(clipModel.extractImageFeatures(img)));
-			in.reset();
-		}
 
+		var paths = files.keySet().stream().toList();
+		var images = files.values().stream().map(this::inputStreamToImage).toList();
+		Log.info("Extracting features for " + images.size() + " images...");
+		var embeddings = clipModel.batchExtractImageFeatures(images).stream().map(VectorDBUtils::embeddingToList).toList();
+
+		Log.info("Finished extracting features for " + images.size() + " images.");
 		insertImagesOnDb(products, paths, embeddings);
 		products.flush().await().indefinitely();
+		Log.info("Finished inserting " + images.size() + " images.");
 	}
 
 	@SneakyThrows
@@ -96,6 +97,19 @@ public class ImageDatabaseService {
 		return searchEmbedding(search);
 	}
 
+	public List<String> searchImages(String predicate) {
+		var search = this.clipModel.extractTextFeatures(predicate);
+		return searchEmbedding(search);
+	}
+
+	@SneakyThrows
+	private Image inputStreamToImage(InputStream in) {
+		in.mark(0);
+		var img = imageFactory.fromInputStream(in);
+		in.reset();
+		return img;
+	}
+
 	@NotNull
 	private List<String> searchEmbedding(float[] search) {
 		var products = database.getOrCreateCollection(COLLECTION_NAME)
@@ -108,10 +122,6 @@ public class ImageDatabaseService {
 				.toList();
 	}
 
-	public List<String> searchImages(String predicate) {
-		var search = this.clipModel.extractTextFeatures(predicate);
-		return searchEmbedding(search);
-	}
 
 	private void insertImagesOnDb(VectorDBCollection collection, List<String> paths, List<List<Float>> embeddings) {
 		collection.insert(Map.of(

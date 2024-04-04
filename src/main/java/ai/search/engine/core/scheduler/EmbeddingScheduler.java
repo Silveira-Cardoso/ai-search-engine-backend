@@ -30,7 +30,7 @@ public class EmbeddingScheduler {
 		this.imageDatabaseService = imageDatabaseService;
 	}
 
-	@Scheduled(every = "10s",
+	@Scheduled(every = "5s",
 			   concurrentExecution = Scheduled.ConcurrentExecution.SKIP,
 			   delay = 10,
 			   delayUnit = TimeUnit.SECONDS)

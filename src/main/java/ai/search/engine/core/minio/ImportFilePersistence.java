@@ -13,6 +13,6 @@ public class ImportFilePersistence extends FilePersistenceAbstract {
 
 	@Inject
 	protected ImportFilePersistence(MinioAsyncClient minioClient, ByteArrayService byteArrayService, AppProperties properties) {
-		super(properties.bucketFrom(), minioClient, byteArrayService,false, properties.embeddingsBatchSize());
+		super(properties.bucketFrom(), minioClient, byteArrayService,false, properties.fileImportsBatchSize());
 	}
 }
