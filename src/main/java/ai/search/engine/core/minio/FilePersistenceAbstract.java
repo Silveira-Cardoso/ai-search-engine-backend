@@ -4,15 +4,15 @@ import ai.search.engine.core.service.ByteArrayService;
 import com.google.common.collect.Streams;
 import com.google.common.io.ByteStreams;
 import io.minio.*;
+import io.minio.messages.Item;
 import lombok.SneakyThrows;
 import lombok.extern.jbosslog.JBossLog;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @JBossLog
 public abstract class FilePersistenceAbstract {
@@ -68,21 +68,11 @@ public abstract class FilePersistenceAbstract {
 				.maxKeys(batchSize)
 				.recursive(true)
 				.build());
-		var list = Streams.stream(iter)
+		return Streams.stream(iter)
 				.limit(batchSize)
-				.toList();
-		var files = new HashMap<String, InputStream>();
-		var futures = new ArrayList<CompletableFuture<Void>>(list.size());
-		for (var item : list) {
-			var future = minioClient.getObject(GetObjectArgs.builder()
-						.bucket(minioBucket)
-						.object(item.get().objectName())
-						.build())
-					.thenAccept(response -> files.put(response.object(), byteArrayService.toByteArray(response)));
-			futures.add(future);
-		}
-		CompletableFuture.allOf(futures.toArray(new CompletableFuture[list.size()])).join();
-		return files;
+				.map(this::getNameAndContentByResult)
+				.map(CompletableFuture::join)
+				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 	}
 
 	@SneakyThrows
@@ -115,5 +105,16 @@ public abstract class FilePersistenceAbstract {
 				.config("{ \"Version\": \"2012-10-17\", \"Statement\": [ { \"Effect\": \"Allow\", \"Principal\": \"*\", \"Action\": [ \"s3:GetObject\" ], \"Resource\": [ \"arn:aws:s3:::" + minioBucket + "/*\" ] } ] }")
 				.build();
 		minioClient.setBucketPolicy(policyArgs).get();
+	}
+
+	@SneakyThrows
+	private CompletableFuture<Map.Entry<String, InputStream>> getNameAndContentByResult(Result<Item> result) {
+		var item = result.get();
+		return minioClient.getObject(GetObjectArgs.builder()
+				.bucket(minioBucket)
+				.object(item.objectName())
+				.build())
+				.thenApply(byteArrayService::toByteArray)
+				.thenApply(inputStream -> Map.entry(item.objectName(), inputStream));
 	}
 }
